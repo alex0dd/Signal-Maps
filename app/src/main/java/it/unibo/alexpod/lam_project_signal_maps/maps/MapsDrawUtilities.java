@@ -6,22 +6,14 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.android.gms.maps.model.Polyline;
-import com.google.android.gms.maps.model.PolylineOptions;
 
 public class MapsDrawUtilities {
 
-    private GoogleMap map;
-
-    public MapsDrawUtilities(GoogleMap map){
-        this.map = map;
+    public static void drawSquare(GoogleMap map, LatLng initialPoint, double l, int color){
+        drawSquare(map, initialPoint.latitude, initialPoint.longitude, l, color);
     }
 
-    public void drawSquare(LatLng initialPoint, double l, int color){
-        this.drawSquare(initialPoint.latitude, initialPoint.longitude, l, color);
-    }
-
-    public void drawSquare(double x, double y, double l, int color){
+    public static void drawSquare(GoogleMap map, double x, double y, double l, int color){
         // Instantiates a new Polygon object and adds points to define a rectangle
         PolygonOptions rectOptions = new PolygonOptions()
                 .add(new LatLng(x, y),
@@ -33,7 +25,7 @@ public class MapsDrawUtilities {
                 .fillColor(color);
 
         // Get back the mutable Polygon
-        Polygon polygon = this.map.addPolygon(rectOptions);
+        Polygon polygon = map.addPolygon(rectOptions);
 
     }
 

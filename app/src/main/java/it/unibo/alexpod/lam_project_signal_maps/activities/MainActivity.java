@@ -5,43 +5,69 @@ import android.support.design.widget.TabLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
-import android.support.v4.view.ViewPager;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
+import android.widget.Toast;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
-import it.unibo.alexpod.lam_project_signal_maps.adapters.SectionsPageAdapter;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
 
 public class MainActivity extends AppCompatActivity {
 
-    TabLayout navigationTabLayout;
+    Toolbar mainToolbar;
+    Spinner mainToolbarSpinner;
 
-    private ViewPager viewPager;
+    private MapsFragment mapsFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        /*
+        * Initialize UI
+        * */
+        mainToolbar = findViewById(R.id.mainToolbar);
+        mainToolbarSpinner = findViewById(R.id.mainToolbarSpinner);
+        // Remove title from toolbar
+        mainToolbar.setTitle("");
 
-        PermissionsRequester permissionsRequester = new PermissionsRequester(this, getApplicationContext());
+        PermissionsRequester permissionsRequester = new PermissionsRequester(
+                this,
+                getApplicationContext()
+        );
         permissionsRequester.requirePermission(Manifest.permission.ACCESS_COARSE_LOCATION);
 
-        viewPager = findViewById(R.id.container);
-        setupViewPager(viewPager);
+        ArrayAdapter<String> mainToolbarSpinnerMenuAdapter = new ArrayAdapter<String>(
+                MainActivity.this,
+                R.layout.custom_spinner_text_item
+        );
+        mainToolbarSpinnerMenuAdapter.add(getString(R.string.wifi_map_tab_title));
+        mainToolbarSpinnerMenuAdapter.add(getString(R.string.umts_map_tab_title));
+        mainToolbarSpinnerMenuAdapter.add(getString(R.string.lte_map_tab_title));
+        mainToolbarSpinnerMenuAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mainToolbarSpinner.setAdapter(mainToolbarSpinnerMenuAdapter);
 
-        navigationTabLayout = findViewById(R.id.navigationTabLayout);
-        navigationTabLayout.setupWithViewPager(viewPager);
-    }
+        /*
+        * Declare used variables
+        * */
+        mapsFragment = new MapsFragment();
 
-    private void setupViewPager(ViewPager viewPager){
-        SectionsPageAdapter adapter = new SectionsPageAdapter(getSupportFragmentManager());
-        adapter.addFragment(new MapsFragment(), getString(R.string.wifi_map_tab_title));
-        adapter.addFragment(new MapsFragment(), getString(R.string.umts_map_tab_title));
-        adapter.addFragment(new MapsFragment(), getString(R.string.lte_map_tab_title));
-        viewPager.setAdapter(adapter);
+        /*
+        * Declare event handlers
+        * */
+        mainToolbarSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                mapsFragment.setSignalType(position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 }
