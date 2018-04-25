@@ -29,4 +29,5 @@ dependencies {
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
     implementation 'com.android.support:design:26.1.0'
     implementation 'com.google.android.gms:play-services-maps:15.0.0'
+    compile group: 'com.rgi-corp', name: 'ww-geo-coords', version: '1.0' //Thanks for using https://jar-download.com
 }
