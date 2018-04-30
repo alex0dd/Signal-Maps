@@ -1,7 +1,7 @@
 package it.unibo.alexpod.lam_project_signal_maps.activities;
 
 import android.Manifest;
-import android.support.design.widget.TabLayout;
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -10,11 +10,11 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
-import android.widget.Toast;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
+import it.unibo.alexpod.lam_project_signal_maps.services.GPSLocationService;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
                 getApplicationContext()
         );
         permissionsRequester.requirePermission(Manifest.permission.ACCESS_COARSE_LOCATION);
+        permissionsRequester.requirePermission(Manifest.permission.ACCESS_FINE_LOCATION);
 
         ArrayAdapter<String> mainToolbarSpinnerMenuAdapter = new ArrayAdapter<String>(
                 MainActivity.this,
@@ -57,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         * */
         mapsFragment = new MapsFragment();
 
+
         /*
         * Declare event handlers
         * */
@@ -69,5 +71,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
+
+        // start the gps data gathering service
+        startService(new Intent(getApplicationContext(), GPSLocationService.class));
     }
 }

@@ -1,4 +1,5 @@
 package it.unibo.alexpod.lam_project_signal_maps.fragments;
+import android.annotation.SuppressLint;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -7,7 +8,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -82,12 +82,10 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
                         Color.green(pointsColor),
                         Color.blue(pointsColor)));
             }
-            // Move camera towards the first point
-            LatLng cameraPoint = mapPoints.keySet().iterator().next();
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(cameraPoint, 0.1f));
         }
     }
 
+    @SuppressLint("MissingPermission")
     @Override
     public void onMapReady(GoogleMap googleMap) {
         /* Perform initialization */
@@ -97,6 +95,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
         GoogleMap mMap = GoogleMapsSingleton.getMap();
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.getUiSettings().setZoomGesturesEnabled(true);
+        mMap.setMyLocationEnabled(true);
         this.setSignalType(0);
     }
 }

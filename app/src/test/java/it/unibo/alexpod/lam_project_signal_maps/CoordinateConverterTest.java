@@ -25,4 +25,12 @@ public class CoordinateConverterTest {
         String mgrs_out = CoordinateConverter.LatLngToMgrs(latlon);
         assertTrue(mgrs.equals(mgrs_out));
     }
+
+    @Test
+    public void LatLonToMgrsQuadrant_isCorrect() throws Exception{
+        String mgrs_quadrant = "10SEG 7965 3962";
+        LatLng location = new LatLng(37.39994, -122.10009 );
+        String mgrs_quadrant_out = CoordinateConverter.LatLngToMgrsQuadrant(location);
+        assertTrue(mgrs_quadrant_out.equals(mgrs_quadrant));
+    }
 }

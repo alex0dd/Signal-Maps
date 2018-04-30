@@ -14,4 +14,18 @@ public class CoordinateConverter {
         return new LatLng(latlon[0], latlon[1]);
     }
 
+    public static String LatLngToMgrsQuadrant(LatLng coordinate){
+        String position = Coordinates.mgrsFromLatLon(coordinate.latitude, coordinate.longitude);
+        StringBuilder outPosition = new StringBuilder();
+        String[] components = position.split(" ");
+        // Manually join as we don't wanna use a MinSDK 26 method
+        outPosition.append(components[0]);
+        outPosition.append(" ");
+        outPosition.append(components[1].substring(0, 4));
+        outPosition.append(" ");
+        outPosition.append(components[2].substring(0, 4));
+        // Return string
+        return outPosition.toString();
+    }
+
 }
