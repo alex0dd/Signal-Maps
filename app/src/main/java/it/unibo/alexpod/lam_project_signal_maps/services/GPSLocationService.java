@@ -20,6 +20,9 @@ import java.util.HashMap;
 import java.util.Random;
 
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSampleDao;
 
 public class GPSLocationService extends Service{
 
@@ -58,7 +61,10 @@ public class GPSLocationService extends Service{
                     // TODO: measure this value instead of mocking it
                     int sampledValue = signals.get(locationQuadrant);
                     System.out.println(location.getTime() + " " + locationQuadrant + " " + sampledValue);
-                    // TODO: persist to database
+                    // TODO: persist to database on another thread
+                    SignalDatabase dbInstance = SignalDatabase.getInstance(getApplicationContext());
+                    SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
+                    signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), sampledValue, 0));
                 }
 
             }

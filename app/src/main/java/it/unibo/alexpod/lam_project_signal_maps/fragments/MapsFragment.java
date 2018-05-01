@@ -8,15 +8,21 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.berico.coords.Coordinates;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
+import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSampleDao;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MapsDrawUtilities;
 import it.unibo.alexpod.lam_project_signal_maps.singletons.GoogleMapsSingleton;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MathUtils;
@@ -34,14 +40,14 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
         return view;
     }
 
-    private HashMap<LatLng, Float> getMockData(int type){
+    private HashMap<LatLng, Float> getData(int type){
         HashMap<LatLng, Float> mapPoints = new HashMap<>();
-        // Add mock points
-        LatLng initialMockPosition = new LatLng(37.4, -122.1);
-        mapPoints.put(initialMockPosition, 94.0f);
-        mapPoints.put(new LatLng(initialMockPosition.latitude+quadrantsDistance, initialMockPosition.longitude), 184.5f);
-        mapPoints.put(new LatLng(initialMockPosition.latitude, initialMockPosition.longitude+quadrantsDistance), 153.1f);
-        mapPoints.put(new LatLng(initialMockPosition.latitude+quadrantsDistance, initialMockPosition.longitude+quadrantsDistance), 66.1f);
+        SignalDatabase dbInstance = SignalDatabase.getInstance(getContext());
+        SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
+        List<SignalSample> samples = signalSampleDao.getAllSamples(0);
+        for(SignalSample sample : samples){
+            mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample.signal);
+        }
         return mapPoints;
     }
 
@@ -56,8 +62,8 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
         if(mMap != null){
             // reset points on the map
             mMap.clear();
-            // get data from a persistent store(mock for now)
-            HashMap<LatLng, Float> mapPoints = getMockData(type);
+            // get data from a persistent store
+            HashMap<LatLng, Float> mapPoints = getData(type);
             // Draw squares on map
             for(Map.Entry<LatLng, Float> point : mapPoints.entrySet()){
                 LatLng latLngQuadrant = point.getKey();
