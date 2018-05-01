@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.IBinder;
+import android.support.annotation.ColorInt;
 import android.support.annotation.Nullable;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -15,25 +16,35 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.model.LatLng;
 
+import java.util.HashMap;
+import java.util.Random;
+
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
-import it.unibo.alexpod.lam_project_signal_maps.maps.MapsDrawUtilities;
-import it.unibo.alexpod.lam_project_signal_maps.singletons.GoogleMapsSingleton;
 
 public class GPSLocationService extends Service{
 
-    private FusedLocationProviderClient mFusedLocationClient;
-    private LocationCallback mLocationCallback;
-    private LocationRequest mLocationRequest;
+    private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 1; // 1 meter
+    private static final long MIN_TIME_BW_UPDATES = 1000 * 1; // 1 second
 
-    private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 9; // 9 meters
-    private static final long MIN_TIME_BW_UPDATES = 1000 * 5; // 5 seconds
+    public HashMap<String, Integer> buildMockSignalData(){
+        HashMap<String, Integer> signals = new HashMap<>();
+        Random r = new Random();
+        int delta = 10;
+        for(int i = 2746-delta; i < 2752+delta; i++){
+            for(int j = 342-delta; j < 352+delta; j++){
+                signals.put("31UFU "+i+" 0"+j, (r.nextInt(100)%20)+80);
+            }
+        }
+        return signals;
+    }
 
     @SuppressLint("MissingPermission")
     @Override
     public void onCreate() {
         super.onCreate();
-        mLocationRequest = new LocationRequest();
-        mLocationCallback = new LocationCallback(){
+        final HashMap<String, Integer> signals = buildMockSignalData();
+        LocationRequest mLocationRequest = new LocationRequest();
+        LocationCallback mLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 if (locationResult == null) {
@@ -44,16 +55,24 @@ public class GPSLocationService extends Service{
                     String locationQuadrant = CoordinateConverter.LatLngToMgrsQuadrant(latLngLocation);
                     LatLng latLngQuadrant = CoordinateConverter.MgrsToLatLng(locationQuadrant);
 
-                    MapsDrawUtilities.drawSquare(GoogleMapsSingleton.getMap(), latLngQuadrant, 11, Color.RED);
-                    System.out.println(location.getTime()+" "+locationQuadrant);
+                    // TODO: measure this value instead of mocking it
+                    int sampledValue = signals.get(locationQuadrant);
+                    System.out.println(location.getTime() + " " + locationQuadrant + " " + sampledValue);
+                    // TODO: persist to database
                 }
 
             }
         };
         mLocationRequest.setInterval(MIN_TIME_BW_UPDATES);
         mLocationRequest.setSmallestDisplacement(MIN_DISTANCE_CHANGE_FOR_UPDATES);
-        mFusedLocationClient =  LocationServices.getFusedLocationProviderClient(this);
+        // Create client instance and request for updates
+        FusedLocationProviderClient mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, null );
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
     }
 
     @Nullable

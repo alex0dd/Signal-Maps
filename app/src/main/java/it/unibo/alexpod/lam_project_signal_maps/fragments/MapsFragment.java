@@ -17,12 +17,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
-import it.unibo.alexpod.lam_project_signal_maps.maps.MapsDrawUtilities;
+import it.unibo.alexpod.lam_project_signal_maps.utils.MapsDrawUtilities;
 import it.unibo.alexpod.lam_project_signal_maps.singletons.GoogleMapsSingleton;
+import it.unibo.alexpod.lam_project_signal_maps.utils.MathUtils;
 
 public class MapsFragment extends Fragment implements OnMapReadyCallback {
 
-    private double quadrantsDistance = 1.0;
+    private double quadrantsDistance = 10.1; //10.1 meters
 
     @Nullable
     @Override
@@ -55,32 +56,18 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
         if(mMap != null){
             // reset points on the map
             mMap.clear();
-
             // get data from a persistent store(mock for now)
             HashMap<LatLng, Float> mapPoints = getMockData(type);
-
-            int pointsColor = 0;
-            switch (type){
-                case 0:
-                    // Wifi
-                    pointsColor = Color.rgb(255, 0, 0);
-                    break;
-                case 1:
-                    // UMTS
-                    pointsColor = Color.rgb(0, 255, 0);
-                    break;
-                case 2:
-                    // LTE
-                    pointsColor = Color.rgb(0, 0, 255);
-                    break;
-            }
             // Draw squares on map
             for(Map.Entry<LatLng, Float> point : mapPoints.entrySet()){
-                MapsDrawUtilities.drawSquare(mMap, point.getKey(), quadrantsDistance, Color.argb(
-                        point.getValue().intValue(),
-                        Color.red(pointsColor),
-                        Color.green(pointsColor),
-                        Color.blue(pointsColor)));
+                LatLng latLngQuadrant = point.getKey();
+                Float sampledValue = point.getValue();
+                // TODO: do proper rescaling
+                float rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 100, 0, 1);
+
+                int color = MathUtils.interpolateColors(Color.RED, Color.GREEN, rescaledValue);
+
+                MapsDrawUtilities.drawSquare(GoogleMapsSingleton.getMap(), latLngQuadrant, quadrantsDistance, color);
             }
         }
     }

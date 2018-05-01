@@ -1,4 +1,4 @@
-package it.unibo.alexpod.lam_project_signal_maps.maps;
+package it.unibo.alexpod.lam_project_signal_maps.utils;
 
 import android.graphics.Color;
 

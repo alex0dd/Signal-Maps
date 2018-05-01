@@ -1,6 +1,8 @@
 package it.unibo.alexpod.lam_project_signal_maps.activities;
 
 import android.Manifest;
+import android.app.ActivityManager;
+import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -57,7 +59,6 @@ public class MainActivity extends AppCompatActivity {
         * Declare used variables
         * */
         mapsFragment = new MapsFragment();
-
 
         /*
         * Declare event handlers
