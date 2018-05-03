@@ -1,8 +1,6 @@
 package it.unibo.alexpod.lam_project_signal_maps.activities;
 
 import android.Manifest;
-import android.app.ActivityManager;
-import android.content.Context;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -44,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
         );
         permissionsRequester.requirePermission(Manifest.permission.ACCESS_COARSE_LOCATION);
         permissionsRequester.requirePermission(Manifest.permission.ACCESS_FINE_LOCATION);
+        permissionsRequester.requirePermission(Manifest.permission.ACCESS_WIFI_STATE);
+        permissionsRequester.requirePermission(Manifest.permission.CHANGE_WIFI_STATE);
 
         ArrayAdapter<String> mainToolbarSpinnerMenuAdapter = new ArrayAdapter<String>(
                 MainActivity.this,
