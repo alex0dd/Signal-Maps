@@ -6,7 +6,6 @@ import android.support.annotation.ColorInt;
 public class MathUtils {
 
     public static float rescaleInInterval(float t, float a, float b, float c, float d){
-        // TODO: put this method outside of this class
         return c + ((d-c)/(b-a))*(t-a);
     }
 

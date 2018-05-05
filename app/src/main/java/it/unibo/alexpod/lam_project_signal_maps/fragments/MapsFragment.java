@@ -44,7 +44,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
         HashMap<LatLng, Float> mapPoints = new HashMap<>();
         SignalDatabase dbInstance = SignalDatabase.getInstance(getContext());
         SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
-        List<SignalSample> samples = signalSampleDao.getAllSamples(0);
+        List<SignalSample> samples = signalSampleDao.getAllSamples(type);
         for(SignalSample sample : samples){
             mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample.signal);
         }
@@ -68,8 +68,22 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
             for(Map.Entry<LatLng, Float> point : mapPoints.entrySet()){
                 LatLng latLngQuadrant = point.getKey();
                 Float sampledValue = point.getValue();
-                // TODO: do proper rescaling
-                float rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 100, 0, 1);
+                float rescaledValue = sampledValue;
+                // rescale differently according to signal type
+                switch (type){
+                    case 0:
+                        // Wifi
+                        rescaledValue = MathUtils.rescaleInInterval(sampledValue, -100, 0, 0, 1);
+                        break;
+                    case 1:
+                        // UMTS
+                        rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 31, 0, 1);
+                        break;
+                    case 2:
+                        // LTE
+                        rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 97, 0, 1);
+                        break;
+                }
 
                 int color = MathUtils.interpolateColors(Color.RED, Color.GREEN, rescaledValue);
 

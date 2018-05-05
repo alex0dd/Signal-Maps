@@ -15,12 +15,8 @@ import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.telephony.CellInfo;
-import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoWcdma;
-import android.telephony.CellSignalStrengthGsm;
-import android.telephony.CellSignalStrengthLte;
-import android.telephony.CellSignalStrengthWcdma;
 import android.telephony.TelephonyManager;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -50,10 +46,41 @@ public class GPSLocationService extends Service{
     private WifiScanReceiver wifiReceiver;
 
     private WifiManager wifiManager;
+    private TelephonyManager telephonyManager;
 
     public int mockSignal(){
         Random r = new Random();
         return (r.nextInt(100) % 20) + 80;
+    }
+
+    public Integer getBestValueOfSignal(List<CellInfo> cInfoList, Class<?> cellClass){
+        Integer bestValue = null;
+        Integer comparisonValue = 99;
+        if(cInfoList.size() > 0 && (cellClass.equals(CellInfoWcdma.class) || cellClass.equals(CellInfoLte.class))){
+            for(CellInfo cellInfo : cInfoList){
+                // if the cell is of the right class and is registred
+                if(cellClass.isInstance(cellInfo) && cellInfo.isRegistered()) {
+                    // the cellClass is either CellInfoLte or CellInfoWcdma so one of the two branches will be executed
+                    if (cellClass.equals(CellInfoLte.class)) {
+                        comparisonValue = ((CellInfoLte) cellInfo).getCellSignalStrength().getAsuLevel();
+                    } else if (cellClass.equals(CellInfoWcdma.class)) {
+                        comparisonValue = ((CellInfoWcdma) cellInfo).getCellSignalStrength().getAsuLevel();
+                    }
+                    // if comparisonValue is not unknown
+                    if(comparisonValue != 99) {
+                        // if best value was not assigned
+                        if (bestValue != null) {
+                            if (bestValue < comparisonValue) {
+                                bestValue = comparisonValue;
+                            }
+                        } else {
+                            bestValue = comparisonValue;
+                        }
+                    }
+                }
+            }
+        }
+        return bestValue;
     }
 
     @SuppressLint("MissingPermission")
@@ -78,6 +105,8 @@ public class GPSLocationService extends Service{
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, handlerThread.getLooper());
 
+        // Get Telephony manager
+        telephonyManager = ((TelephonyManager)getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE));
         // Get Wifi manager
         wifiManager = ((WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE));
         // Start Wifi broadcast receiver on another thread
@@ -92,6 +121,9 @@ public class GPSLocationService extends Service{
                 null,
                 wifiHandler
         );
+
+        // TODO: add permissions check(permissions might've been removed at runtime)
+        // TODO: add gps turned on check
     }
 
     private class WifiScanReceiver extends BroadcastReceiver {
@@ -105,52 +137,39 @@ public class GPSLocationService extends Service{
                     Location location = task.getResult();
                     LatLng latLngLocation = new LatLng(location.getLatitude(), location.getLongitude());
                     String locationQuadrant = CoordinateConverter.LatLngToMgrsQuadrant(latLngLocation);
+                    Integer bestWifiSignalLevel = null;
+                    Integer bestUMTSSignal, bestLteSignal = null;
 
-                    // Get the most recent scan results
-                    List<ScanResult> wifiScanList = wifiManager.getScanResults();
-                    for(int i = 0; i < wifiScanList.size(); i++){
-                        String info = wifiScanList.get(i).toString();
-                        System.out.println("quadrant: "+locationQuadrant+", info: "+info);
-                    }
-
-                    System.out.println("rssi:" + wifiManager.getConnectionInfo().getRssi());
-
-                    // TODO: measure this value instead of mocking it
-                    int sampledValue = mockSignal();//signals.get(locationQuadrant);
-                    System.out.println(location.getTime() + " " + locationQuadrant + " " + sampledValue);
-
-                    // TODO: persist to database on another thread
+                    // TODO: wrap the database calls into a repository pattern
+                    // Get the database instance
                     SignalDatabase dbInstance = SignalDatabase.getInstance(getApplicationContext());
                     SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
-                    signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), sampledValue, 0));
+
+                    // Get the most recent Wifi scan results
+                    List<ScanResult> wifiScanList = wifiManager.getScanResults();
+                    if(wifiScanList.size() > 0) {
+                        bestWifiSignalLevel = wifiScanList.get(0).level;
+                        for (int i = 1; i < wifiScanList.size(); i++) {
+                            // if better signal level
+                            if(wifiScanList.get(i).level > bestWifiSignalLevel) {
+                                bestWifiSignalLevel = wifiScanList.get(i).level;
+                            }
+                        }
+                    }
+
+                    // Get the Cell results
+                    List<CellInfo> cInfoList = telephonyManager.getAllCellInfo();
+                    bestUMTSSignal = getBestValueOfSignal(cInfoList, CellInfoWcdma.class);
+                    bestLteSignal = getBestValueOfSignal(cInfoList, CellInfoLte.class);
+
+                    System.out.println("LTE: "+bestLteSignal+" UMTS: "+bestUMTSSignal+" Wifi: "+bestWifiSignalLevel);
+                    // TODO: add settings check to decide if enough time has passed to push to database or not
+                    // TODO: abstract these calls into a repository
+                    if(bestWifiSignalLevel != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestWifiSignalLevel, 0));
+                    if(bestUMTSSignal != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestUMTSSignal, 1));
+                    if(bestLteSignal != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestLteSignal, 2));
                 }
             });
-
-            /*
-            //print cell info
-            List<CellInfo> cInfoList = ((TelephonyManager)getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE)).getAllCellInfo();
-            //System.out.println(cInfoList);
-            for (CellInfo info : cInfoList){
-                // if registred to that cell
-                if(info.isRegistered()) {
-                    if (info instanceof CellInfoLte) {
-                        CellSignalStrengthLte signalStrength = ((CellInfoLte) info).getCellSignalStrength();
-                        System.out.println("[LTE]dbm: " + signalStrength.getDbm() + ", asu level: " +
-                                signalStrength.getAsuLevel() + ", level: " +
-                                signalStrength.getLevel());
-                    } else if (info instanceof CellInfoWcdma) {
-                        CellSignalStrengthWcdma signalStrength = ((CellInfoWcdma) info).getCellSignalStrength();
-                        System.out.println("[UMTS] dbm: " + signalStrength.getDbm() + ", asu level: " +
-                                signalStrength.getAsuLevel() + ", level: " +
-                                signalStrength.getLevel());
-                    } else if (info instanceof CellInfoGsm) {
-                        CellSignalStrengthGsm signalStrength = ((CellInfoGsm) info).getCellSignalStrength();
-                        System.out.println("[GSM] dbm: " + signalStrength.getDbm() + ", asu level: " +
-                                signalStrength.getAsuLevel() + ", level: " +
-                                signalStrength.getLevel());
-                    }
-                }
-            }*/
         }
     }
 
