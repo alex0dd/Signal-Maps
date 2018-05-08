@@ -19,6 +19,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
+import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.PreferencesFragment;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
@@ -39,13 +40,65 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        /*
-        * Initialize UI
-        * */
+        /* Initialize UI variables */
         navigationView = findViewById(R.id.mainNavView);
         drawerLayout = findViewById(R.id.mainDrawerLayout);
         mainToolbar = findViewById(R.id.mainToolbar);
         mainToolbarSignalTypeSpinner = findViewById(R.id.mainToolbarSignalTypeSpinner);
+
+        /* Require all permissions */
+        requestAllPermissions();
+
+        /* Declare used variables */
+        mapsFragment = new MapsFragment();
+
+        /* Initialize UI components */
+        initializeToolbar();
+        initializeSignalTypeSpinner();
+        initializeNavigationView();
+
+        // Set the main screen fragment as maps fragment
+        getSupportFragmentManager().beginTransaction()
+                .add(R.id.fragment_container, mapsFragment)
+                .commit();
+
+        // Start the gps data gathering service
+        startService(new Intent(getApplicationContext(), GPSLocationService.class));
+    }
+
+    private void initializeNavigationView() {
+        navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                Fragment fragment = null;
+                // Hide everything auxiliary to the next by default
+                mainToolbarSignalTypeSpinner.setVisibility(View.INVISIBLE);
+                // Select which fragment was chosen
+                if(item.getItemId() == R.id.nav_map){
+                    fragment = new MapsFragment();
+                    mapsFragment = (MapsFragment) fragment;
+                    mainToolbarSignalTypeSpinner.setVisibility(View.VISIBLE);
+                }
+                else if(item.getItemId() == R.id.nav_settings){
+                    fragment = new PreferencesFragment();
+                }
+                // If no unknown fragments were selected
+                if(fragment != null) {
+                    // Swap UI fragments
+                    getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.fragment_container, fragment)
+                            .commit();
+                    // Set item as selected to persist highlight
+                    item.setChecked(true);
+                    // Close drawer when item is tapped
+                    drawerLayout.closeDrawers();
+                }
+                return true;
+            }
+        });
+    }
+
+    void initializeToolbar() {
         // Remove title from toolbar
         mainToolbar.setTitle("");
         setSupportActionBar(mainToolbar);
@@ -55,7 +108,34 @@ public class MainActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         }
+    }
 
+    private void initializeSignalTypeSpinner() {
+        ArrayAdapter<String> mainToolbarSignalTypeSpinnerMenuAdapter = new ArrayAdapter<String>(
+                MainActivity.this,
+                R.layout.custom_spinner_text_item
+        );
+
+        /* Add strings to the adaptor */
+        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.wifi_map_tab_title));
+        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.umts_map_tab_title));
+        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.lte_map_tab_title));
+        mainToolbarSignalTypeSpinnerMenuAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mainToolbarSignalTypeSpinner.setAdapter(mainToolbarSignalTypeSpinnerMenuAdapter);
+
+        /* Declare event handlers */
+        mainToolbarSignalTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                mapsFragment.setSignalType(SignalType.values()[position]);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+    }
+
+    private void requestAllPermissions() {
         PermissionsRequester permissionsRequester = new PermissionsRequester(
                 this,
                 getApplicationContext()
@@ -64,71 +144,6 @@ public class MainActivity extends AppCompatActivity {
         permissionsRequester.requirePermission(Manifest.permission.ACCESS_FINE_LOCATION);
         permissionsRequester.requirePermission(Manifest.permission.ACCESS_WIFI_STATE);
         permissionsRequester.requirePermission(Manifest.permission.CHANGE_WIFI_STATE);
-
-        ArrayAdapter<String> mainToolbarSignalTypeSpinnerMenuAdapter = new ArrayAdapter<String>(
-                MainActivity.this,
-                R.layout.custom_spinner_text_item
-        );
-        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.wifi_map_tab_title));
-        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.umts_map_tab_title));
-        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.lte_map_tab_title));
-        mainToolbarSignalTypeSpinnerMenuAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mainToolbarSignalTypeSpinner.setAdapter(mainToolbarSignalTypeSpinnerMenuAdapter);
-
-        /*
-        * Declare used variables
-        * */
-        mapsFragment = new MapsFragment();
-
-        /*
-        * Declare event handlers
-        * */
-        mainToolbarSignalTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                mapsFragment.setSignalType(position);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
-        navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
-            @Override
-            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                // Swap UI fragments
-                Fragment fragment = null;
-                switch (item.getItemId()){
-                    case R.id.nav_map:
-                        fragment = new MapsFragment();
-                        mapsFragment = (MapsFragment) fragment;
-                        mainToolbarSignalTypeSpinner.setVisibility(View.VISIBLE);
-                        break;
-                    case R.id.nav_settings:
-                        fragment = new PreferencesFragment();
-                        mainToolbarSignalTypeSpinner.setVisibility(View.INVISIBLE);
-                        break;
-                }
-                if(fragment != null) {
-                    System.out.println(getSupportFragmentManager().getFragments());
-                    getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.fragment_container, fragment)
-                            .commit();
-                    // set item as selected to persist highlight
-                    item.setChecked(true);
-                    // close drawer when item is tapped
-                    drawerLayout.closeDrawers();
-                }
-                return true;
-            }
-        });
-
-        getSupportFragmentManager().beginTransaction()
-                .add(R.id.fragment_container, mapsFragment)
-                .commit();
-
-        // start the gps data gathering service
-        startService(new Intent(getApplicationContext(), GPSLocationService.class));
     }
 
     @Override

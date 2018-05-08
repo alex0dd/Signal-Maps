@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
+import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
@@ -79,37 +80,22 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
     /*
     * type: 0: Wifi, 1: UMTS, 2: LTE
     * */
-    public void setSignalType(int type){
-        /*
-        * TODO: implement proper signal type enum/class
-        * */
+    public void setSignalType(SignalType type){
         GoogleMap mMap = this.currentMap;
         if(mMap != null){
             // reset points on the map
             mMap.clear();
             // get data from a persistent store
-            HashMap<LatLng, Float> mapPoints = getData(type);
+            HashMap<LatLng, Float> mapPoints = getData(type.getValue());
             // Draw squares on map
             for(Map.Entry<LatLng, Float> point : mapPoints.entrySet()){
                 LatLng latLngQuadrant = point.getKey();
                 Float sampledValue = point.getValue();
                 float rescaledValue = sampledValue;
                 // rescale differently according to signal type
-                switch (type){
-                    case 0:
-                        // Wifi
-                        rescaledValue = MathUtils.rescaleInInterval(sampledValue, -100, 0, 0, 1);
-                        break;
-                    case 1:
-                        // UMTS
-                        rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 31, 0, 1);
-                        break;
-                    case 2:
-                        // LTE
-                        rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 97, 0, 1);
-                        break;
-                }
-
+                if(type == SignalType.Wifi) rescaledValue = MathUtils.rescaleInInterval(sampledValue, -100, 0, 0, 1);
+                else if(type == SignalType.UMTS) rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 31, 0, 1);
+                else if(type == SignalType.LTE) rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 97, 0, 1);
                 // TODO: scale alpha according do number of samples
                 int color = MathUtils.interpolateColors(Color.RED, Color.GREEN, rescaledValue);
 
@@ -126,6 +112,6 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
         this.currentMap.getUiSettings().setZoomControlsEnabled(true);
         this.currentMap.getUiSettings().setZoomGesturesEnabled(true);
         this.currentMap.setMyLocationEnabled(true);
-        this.setSignalType(0);
+        this.setSignalType(SignalType.Wifi);
     }
 }

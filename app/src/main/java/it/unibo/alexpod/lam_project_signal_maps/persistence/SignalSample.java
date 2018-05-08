@@ -5,6 +5,8 @@ import android.arch.persistence.room.Entity;
 import android.arch.persistence.room.PrimaryKey;
 import android.support.annotation.NonNull;
 
+import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
+
 @Entity(tableName = "signal_samples")
 public class SignalSample {
 
@@ -21,5 +23,12 @@ public class SignalSample {
         this.datetime = datetime;
         this.signal = signal;
         this.signalType = signalType;
+    }
+
+    public SignalSample(@NonNull String mgrs, long datetime, float signal, SignalType signalType){
+        this.mgrs = mgrs;
+        this.datetime = datetime;
+        this.signal = signal;
+        this.signalType = signalType.getValue();
     }
 }

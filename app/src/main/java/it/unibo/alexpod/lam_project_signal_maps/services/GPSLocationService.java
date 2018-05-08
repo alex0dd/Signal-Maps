@@ -31,6 +31,7 @@ import com.google.android.gms.tasks.Task;
 import java.util.List;
 import java.util.Random;
 
+import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
@@ -68,14 +69,7 @@ public class GPSLocationService extends Service{
                     }
                     // if comparisonValue is not unknown
                     if(comparisonValue != 99) {
-                        // if best value was not assigned
-                        if (bestValue != null) {
-                            if (bestValue < comparisonValue) {
-                                bestValue = comparisonValue;
-                            }
-                        } else {
-                            bestValue = comparisonValue;
-                        }
+                        bestValue = bestValue != null ? Math.max(bestValue, comparisonValue) : comparisonValue;
                     }
                 }
             }
@@ -165,9 +159,9 @@ public class GPSLocationService extends Service{
                     System.out.println("LTE: "+bestLteSignal+" UMTS: "+bestUMTSSignal+" Wifi: "+bestWifiSignalLevel);
                     // TODO: add settings check to decide if enough time has passed to push to database or not
                     // TODO: abstract these calls into a repository
-                    if(bestWifiSignalLevel != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestWifiSignalLevel, 0));
-                    if(bestUMTSSignal != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestUMTSSignal, 1));
-                    if(bestLteSignal != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestLteSignal, 2));
+                    if(bestWifiSignalLevel != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestWifiSignalLevel, SignalType.Wifi));
+                    if(bestUMTSSignal != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestUMTSSignal, SignalType.UMTS));
+                    if(bestLteSignal != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestLteSignal, SignalType.LTE));
                 }
             });
         }
