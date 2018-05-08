@@ -1,53 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Use DrawerLayout as root container for activity -->
+<android.support.v4.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main_content"
+    android:id="@+id/mainDrawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true"
-    tools:context="it.unibo.alexpod.lam_project_signal_maps.activities.MainActivity">
+    android:fitsSystemWindows="true">
 
-    <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    <!-- Layout to contain contents of main body of screen (drawer will slide over this) -->
+    <android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:app="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/main_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".activities.MainActivity">
+        android:fitsSystemWindows="true"
+        tools:context="it.unibo.alexpod.lam_project_signal_maps.activities.MainActivity">
 
-        <android.support.v7.widget.Toolbar
-            android:id="@+id/mainToolbar"
+        <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            xmlns:tools="http://schemas.android.com/tools"
+            android:id="@+id/main_content_relative"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentTop="true"
-            android:background="@color/colorPrimary"
-            app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-            app:layout_scrollFlags="scroll|enterAlways"
-            app:title="@string/app_name">
+            android:layout_height="match_parent"
+            tools:context=".activities.MainActivity">
 
-            <Spinner
-                android:id="@+id/mainToolbarSpinner"
-                android:layout_width="wrap_content"
+            <android.support.v7.widget.Toolbar
+                android:id="@+id/mainToolbar"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_alignLeft="@+id/mainToolbar"
-                android:layout_alignStart="@+id/mainToolbar"
-                android:layout_below="@+id/mainToolbar"
-                android:layout_marginEnd="8dp"
-                android:layout_marginRight="8dp"
-                android:gravity="end"
-                app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentTop="true"
+                android:background="@color/colorPrimary"
+                app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:layout_scrollFlags="scroll|enterAlways"
+                app:title="@string/app_name">
 
-        </android.support.v7.widget.Toolbar>
-        <fragment
-            android:id="@+id/mapsFragment"
-            android:name="it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/mainToolbar"
-            />
-    </RelativeLayout>
+                <Spinner
+                    android:id="@+id/mainToolbarSignalTypeSpinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignLeft="@+id/mainToolbar"
+                    android:layout_alignStart="@+id/mainToolbar"
+                    android:layout_below="@+id/mainToolbar"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginRight="8dp"
+                    android:gravity="end"
+                    app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
+            </android.support.v7.widget.Toolbar>
+            <FrameLayout
+                android:id="@+id/fragment_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_below="@id/mainToolbar">
+            </FrameLayout>
+            <!--<fragment
+                android:id="@+id/mainFragment"
+                android:name="it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/mainToolbar"
+                />-->
+        </RelativeLayout>
+    </android.support.design.widget.CoordinatorLayout>
+    <android.support.design.widget.NavigationView
+        android:id="@+id/mainNavView"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:fitsSystemWindows="true"
+        app:menu="@menu/navigation_menu"
+        />
 
-</android.support.design.widget.CoordinatorLayout>
+</android.support.v4.widget.DrawerLayout>

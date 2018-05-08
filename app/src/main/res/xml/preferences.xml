@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+        <PreferenceCategory
+            android:title="@string/sampling_preferences_title">
+
+            <ListPreference
+                android:key="sample_interval_preference"
+                android:title="@string/sample_interval_preference_title"
+                android:summary="@string/sample_interval_preference_description"
+                android:entries="@array/sample_interval_entries_list_preference"
+                android:entryValues="@array/sample_interval_entryvalues_list_preference" />
+        </PreferenceCategory>
+</PreferenceScreen>
