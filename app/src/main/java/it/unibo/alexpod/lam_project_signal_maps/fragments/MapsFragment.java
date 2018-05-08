@@ -8,10 +8,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.berico.coords.Coordinates;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.HashMap;
@@ -24,20 +25,44 @@ import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSampleDao;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MapsDrawUtilities;
-import it.unibo.alexpod.lam_project_signal_maps.singletons.GoogleMapsSingleton;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MathUtils;
 
 public class MapsFragment extends Fragment implements OnMapReadyCallback {
 
     private double quadrantsDistance = 10.1; //10.1 meters
+    private SupportMapFragment mMapView;
+
+    CameraPosition lastCameraPosition = null;
+    GoogleMap currentMap = null;
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.maps_fragment, container, false);
-        SupportMapFragment mMapView = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
+        mMapView = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         mMapView.getMapAsync(this);
         return view;
+    }
+
+    @Override
+    public void onPause() {
+        // save the last position
+        lastCameraPosition = this.currentMap.getCameraPosition();
+        mMapView.onPause();
+        super.onPause();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if(mMapView != null) {
+            mMapView.onResume();
+            // if a map is set and last position is known
+            if(lastCameraPosition != null && this.currentMap != null){
+                // restore the last position
+                this.currentMap.moveCamera(CameraUpdateFactory.newCameraPosition(lastCameraPosition));
+            }
+        }
     }
 
     private HashMap<LatLng, Float> getData(int type){
@@ -58,7 +83,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
         /*
         * TODO: implement proper signal type enum/class
         * */
-        GoogleMap mMap = GoogleMapsSingleton.getMap();
+        GoogleMap mMap = this.currentMap;
         if(mMap != null){
             // reset points on the map
             mMap.clear();
@@ -85,9 +110,10 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
                         break;
                 }
 
+                // TODO: scale alpha according do number of samples
                 int color = MathUtils.interpolateColors(Color.RED, Color.GREEN, rescaledValue);
 
-                MapsDrawUtilities.drawSquare(GoogleMapsSingleton.getMap(), latLngQuadrant, quadrantsDistance, color);
+                MapsDrawUtilities.drawSquare(mMap, latLngQuadrant, quadrantsDistance, color);
             }
         }
     }
@@ -96,13 +122,10 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onMapReady(GoogleMap googleMap) {
         /* Perform initialization */
-        // Using singleton as there is some bug with maps instance being null outside of this method
-        // even after it's been assigned
-        GoogleMapsSingleton.setMap(googleMap);
-        GoogleMap mMap = GoogleMapsSingleton.getMap();
-        mMap.getUiSettings().setZoomControlsEnabled(true);
-        mMap.getUiSettings().setZoomGesturesEnabled(true);
-        mMap.setMyLocationEnabled(true);
+        this.currentMap = googleMap;
+        this.currentMap.getUiSettings().setZoomControlsEnabled(true);
+        this.currentMap.getUiSettings().setZoomGesturesEnabled(true);
+        this.currentMap.setMyLocationEnabled(true);
         this.setSignalType(0);
     }
 }
