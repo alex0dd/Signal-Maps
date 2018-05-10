@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
@@ -31,7 +32,9 @@ import com.google.android.gms.tasks.Task;
 import java.util.List;
 import java.util.Random;
 
+import it.unibo.alexpod.lam_project_signal_maps.enums.SampleIntervalPreference;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
+import it.unibo.alexpod.lam_project_signal_maps.fragments.PreferencesFragment;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
@@ -49,10 +52,7 @@ public class GPSLocationService extends Service{
     private WifiManager wifiManager;
     private TelephonyManager telephonyManager;
 
-    public int mockSignal(){
-        Random r = new Random();
-        return (r.nextInt(100) % 20) + 80;
-    }
+    private SharedPreferences preferences;
 
     public Integer getBestValueOfSignal(List<CellInfo> cInfoList, Class<?> cellClass){
         Integer bestValue = null;
@@ -103,6 +103,8 @@ public class GPSLocationService extends Service{
         telephonyManager = ((TelephonyManager)getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE));
         // Get Wifi manager
         wifiManager = ((WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE));
+        // Get shared preferences
+        preferences = getSharedPreferences(PreferencesFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
         // Start Wifi broadcast receiver on another thread
         wifiReceiver = new WifiScanReceiver();
         HandlerThread wifiHandlerThread = new HandlerThread("WifiHandlerThread");
@@ -127,17 +129,32 @@ public class GPSLocationService extends Service{
             mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
                 @Override
                 public void onComplete(@NonNull Task<Location> task) {
+                    // TODO: wrap the database calls into a repository pattern
+                    // Get the database instance
+                    SignalDatabase dbInstance = SignalDatabase.getInstance(getApplicationContext());
+                    SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
+                    // Get interval preference
+                    String sampleIntervalPreference = preferences.getString("sample_interval_preference", "0");
+                    // Transform it into SampleIntervalPreference
+                    SampleIntervalPreference sampleInterval = SampleIntervalPreference.values()[Integer.parseInt(sampleIntervalPreference)];
                     // Get last known location
                     Location location = task.getResult();
                     LatLng latLngLocation = new LatLng(location.getLatitude(), location.getLongitude());
                     String locationQuadrant = CoordinateConverter.LatLngToMgrsQuadrant(latLngLocation);
                     Integer bestWifiSignalLevel = null;
                     Integer bestUMTSSignal, bestLteSignal = null;
-
-                    // TODO: wrap the database calls into a repository pattern
-                    // Get the database instance
-                    SignalDatabase dbInstance = SignalDatabase.getInstance(getApplicationContext());
-                    SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
+                    boolean shouldSaveWifi = false;
+                    boolean shouldSaveUMTS = false;
+                    boolean shouldSaveLTE = false;
+                    // Last samples of each signal type
+                    SignalSample lastSavedWifiSample = signalSampleDao.getLastSample(SignalType.Wifi.getValue());
+                    SignalSample lastSavedUMTSSample = signalSampleDao.getLastSample(SignalType.UMTS.getValue());
+                    SignalSample lastSavedLTESample = signalSampleDao.getLastSample(SignalType.LTE.getValue());
+                    // Datetimes which indicate when the last sample of each signal got saved
+                    long lastSavedWifiDatetime = lastSavedWifiSample != null ? lastSavedWifiSample.datetime : 0;
+                    long lastSavedUMTSDatetime = lastSavedUMTSSample != null ? lastSavedUMTSSample.datetime : 0;
+                    long lastSavedLTEDatetime = lastSavedLTESample != null ? lastSavedLTESample.datetime : 0;
+                    long lastScanTime = location.getTime();
 
                     // Get the most recent Wifi scan results
                     List<ScanResult> wifiScanList = wifiManager.getScanResults();
@@ -156,12 +173,15 @@ public class GPSLocationService extends Service{
                     bestUMTSSignal = getBestValueOfSignal(cInfoList, CellInfoWcdma.class);
                     bestLteSignal = getBestValueOfSignal(cInfoList, CellInfoLte.class);
 
+                    if(lastScanTime - lastSavedWifiDatetime >= sampleInterval.getIntervalMs()) shouldSaveWifi = true;
+                    if(lastScanTime - lastSavedUMTSDatetime >= sampleInterval.getIntervalMs()) shouldSaveUMTS = true;
+                    if(lastScanTime - lastSavedLTEDatetime >= sampleInterval.getIntervalMs()) shouldSaveLTE = true;
+
                     System.out.println("LTE: "+bestLteSignal+" UMTS: "+bestUMTSSignal+" Wifi: "+bestWifiSignalLevel);
-                    // TODO: add settings check to decide if enough time has passed to push to database or not
                     // TODO: abstract these calls into a repository
-                    if(bestWifiSignalLevel != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestWifiSignalLevel, SignalType.Wifi));
-                    if(bestUMTSSignal != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestUMTSSignal, SignalType.UMTS));
-                    if(bestLteSignal != null) signalSampleDao.insert(new SignalSample(locationQuadrant, location.getTime(), bestLteSignal, SignalType.LTE));
+                    if(bestWifiSignalLevel != null && shouldSaveWifi) signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
+                    if(bestUMTSSignal != null && shouldSaveUMTS) signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
+                    if(bestLteSignal != null && shouldSaveLTE) signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
                 }
             });
         }

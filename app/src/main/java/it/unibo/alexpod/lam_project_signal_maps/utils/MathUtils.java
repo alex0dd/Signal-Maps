@@ -10,11 +10,15 @@ public class MathUtils {
     }
 
     public static int interpolateColors(@ColorInt int colorA, @ColorInt int colorB, float bAmount) {
+        return interpolateColors(colorA, colorB, 100, bAmount);
+    }
+
+    public static int interpolateColors(@ColorInt int colorA, @ColorInt int colorB, int alpha, float bAmount) {
         float aAmount = 1.0f - bAmount;
         int newRed = (int)(Color.red(colorA) * aAmount + Color.red(colorB) * bAmount);
         int newGreen = (int)(Color.green(colorA) * aAmount + Color.green(colorB) * bAmount);
         int newBlue = (int)(Color.blue(colorA) * aAmount + Color.blue(colorB) * bAmount);
-        return Color.argb(100, newRed, newGreen, newBlue);
+        return Color.argb(alpha, newRed, newGreen, newBlue);
     }
 
 }

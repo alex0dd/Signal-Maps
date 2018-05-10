@@ -23,12 +23,14 @@ import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
-import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalMgrsAvgCount;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSampleDao;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MapsDrawUtilities;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MathUtils;
 
 public class MapsFragment extends Fragment implements OnMapReadyCallback {
+
+    private int SAMPLES_FOR_MAX_INTENSITY = 10;
 
     private double quadrantsDistance = 10.1; //10.1 meters
     private SupportMapFragment mMapView;
@@ -66,13 +68,14 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
         }
     }
 
-    private HashMap<LatLng, Float> getData(int type){
-        HashMap<LatLng, Float> mapPoints = new HashMap<>();
+    private HashMap<LatLng, SignalMgrsAvgCount> getData(int type){
+        HashMap<LatLng, SignalMgrsAvgCount> mapPoints = new HashMap<>();
         SignalDatabase dbInstance = SignalDatabase.getInstance(getContext());
         SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
-        List<SignalSample> samples = signalSampleDao.getAllSamples(type);
-        for(SignalSample sample : samples){
-            mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample.signal);
+        List<SignalMgrsAvgCount> samplesMgrsAvgCount = signalSampleDao.getAllSamplesAndCountPerZone(type);
+        for(SignalMgrsAvgCount sample : samplesMgrsAvgCount){
+            System.out.println("mgrs: "+sample.mgrs+" power: "+sample.avgPower+" count: "+sample.samplesCount);
+            mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample);
         }
         return mapPoints;
     }
@@ -83,21 +86,24 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback {
     public void setSignalType(SignalType type){
         GoogleMap mMap = this.currentMap;
         if(mMap != null){
-            // reset points on the map
+            // Reset points on the map
             mMap.clear();
-            // get data from a persistent store
-            HashMap<LatLng, Float> mapPoints = getData(type.getValue());
+            // Get data from a persistent store
+            HashMap<LatLng, SignalMgrsAvgCount> mapPoints = getData(type.getValue());
             // Draw squares on map
-            for(Map.Entry<LatLng, Float> point : mapPoints.entrySet()){
+            for(Map.Entry<LatLng, SignalMgrsAvgCount> point : mapPoints.entrySet()){
                 LatLng latLngQuadrant = point.getKey();
-                Float sampledValue = point.getValue();
+                float sampledValue = point.getValue().avgPower;
+                long samplesCount = point.getValue().samplesCount;
+
                 float rescaledValue = sampledValue;
-                // rescale differently according to signal type
+                // Rescale differently according to signal type
                 if(type == SignalType.Wifi) rescaledValue = MathUtils.rescaleInInterval(sampledValue, -100, 0, 0, 1);
                 else if(type == SignalType.UMTS) rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 31, 0, 1);
                 else if(type == SignalType.LTE) rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 97, 0, 1);
-                // TODO: scale alpha according do number of samples
-                int color = MathUtils.interpolateColors(Color.RED, Color.GREEN, rescaledValue);
+                // Scale alpha according do number of samples
+                int alpha = 100 + Math.min(SAMPLES_FOR_MAX_INTENSITY*10, (int)samplesCount * 10);
+                int color = MathUtils.interpolateColors(Color.RED, Color.GREEN, alpha, rescaledValue);
 
                 MapsDrawUtilities.drawSquare(mMap, latLngQuadrant, quadrantsDistance, color);
             }

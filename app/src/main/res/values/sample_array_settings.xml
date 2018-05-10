@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="sample_interval_entries_list_preference">
+        <item>@string/sample_interval_preference_0_min</item>
         <item>@string/sample_interval_preference_1_min</item>
         <item>@string/sample_interval_preference_30_min</item>
         <item>@string/sample_interval_preference_1_hour</item>
         <item>@string/sample_interval_preference_1_day</item>
     </string-array>
     <string-array name="sample_interval_entryvalues_list_preference">
+        <item>0</item>
         <item>1</item>
         <item>2</item>
         <item>3</item>
