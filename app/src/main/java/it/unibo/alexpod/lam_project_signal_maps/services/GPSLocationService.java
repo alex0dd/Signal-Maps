@@ -30,11 +30,10 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
 import java.util.List;
-import java.util.Random;
 
 import it.unibo.alexpod.lam_project_signal_maps.enums.SampleIntervalPreference;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
-import it.unibo.alexpod.lam_project_signal_maps.fragments.PreferencesFragment;
+import it.unibo.alexpod.lam_project_signal_maps.fragments.SettingsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
@@ -81,6 +80,7 @@ public class GPSLocationService extends Service{
     @Override
     public void onCreate() {
         super.onCreate();
+        System.out.println("On create service");
         HandlerThread handlerThread = new HandlerThread("GPSServiceThread");
         LocationRequest mLocationRequest = new LocationRequest();
         LocationCallback mLocationCallback = new LocationCallback() {
@@ -104,7 +104,7 @@ public class GPSLocationService extends Service{
         // Get Wifi manager
         wifiManager = ((WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE));
         // Get shared preferences
-        preferences = getSharedPreferences(PreferencesFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
+        preferences = getSharedPreferences(SettingsFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
         // Start Wifi broadcast receiver on another thread
         wifiReceiver = new WifiScanReceiver();
         HandlerThread wifiHandlerThread = new HandlerThread("WifiHandlerThread");
@@ -139,49 +139,58 @@ public class GPSLocationService extends Service{
                     SampleIntervalPreference sampleInterval = SampleIntervalPreference.values()[Integer.parseInt(sampleIntervalPreference)];
                     // Get last known location
                     Location location = task.getResult();
-                    LatLng latLngLocation = new LatLng(location.getLatitude(), location.getLongitude());
-                    String locationQuadrant = CoordinateConverter.LatLngToMgrsQuadrant(latLngLocation);
-                    Integer bestWifiSignalLevel = null;
-                    Integer bestUMTSSignal, bestLteSignal = null;
-                    boolean shouldSaveWifi = false;
-                    boolean shouldSaveUMTS = false;
-                    boolean shouldSaveLTE = false;
-                    // Last samples of each signal type
-                    SignalSample lastSavedWifiSample = signalSampleDao.getLastSample(SignalType.Wifi.getValue());
-                    SignalSample lastSavedUMTSSample = signalSampleDao.getLastSample(SignalType.UMTS.getValue());
-                    SignalSample lastSavedLTESample = signalSampleDao.getLastSample(SignalType.LTE.getValue());
-                    // Datetimes which indicate when the last sample of each signal got saved
-                    long lastSavedWifiDatetime = lastSavedWifiSample != null ? lastSavedWifiSample.datetime : 0;
-                    long lastSavedUMTSDatetime = lastSavedUMTSSample != null ? lastSavedUMTSSample.datetime : 0;
-                    long lastSavedLTEDatetime = lastSavedLTESample != null ? lastSavedLTESample.datetime : 0;
-                    long lastScanTime = location.getTime();
+                    // location can get null
+                    if(location != null) {
+                        LatLng latLngLocation = new LatLng(location.getLatitude(), location.getLongitude());
+                        String locationQuadrant = CoordinateConverter.LatLngToMgrsQuadrant(latLngLocation);
+                        Integer bestWifiSignalLevel = null;
+                        Integer bestUMTSSignal, bestLteSignal = null;
+                        boolean shouldSaveWifi = false;
+                        boolean shouldSaveUMTS = false;
+                        boolean shouldSaveLTE = false;
+                        // Last samples of each signal type
+                        SignalSample lastSavedWifiSample = signalSampleDao.getLastSample(SignalType.Wifi.getValue());
+                        SignalSample lastSavedUMTSSample = signalSampleDao.getLastSample(SignalType.UMTS.getValue());
+                        SignalSample lastSavedLTESample = signalSampleDao.getLastSample(SignalType.LTE.getValue());
+                        // Datetimes which indicate when the last sample of each signal got saved
+                        long lastSavedWifiDatetime = lastSavedWifiSample != null ? lastSavedWifiSample.datetime : 0;
+                        long lastSavedUMTSDatetime = lastSavedUMTSSample != null ? lastSavedUMTSSample.datetime : 0;
+                        long lastSavedLTEDatetime = lastSavedLTESample != null ? lastSavedLTESample.datetime : 0;
+                        long lastScanTime = location.getTime();
 
-                    // Get the most recent Wifi scan results
-                    List<ScanResult> wifiScanList = wifiManager.getScanResults();
-                    if(wifiScanList.size() > 0) {
-                        bestWifiSignalLevel = wifiScanList.get(0).level;
-                        for (int i = 1; i < wifiScanList.size(); i++) {
-                            // if better signal level
-                            if(wifiScanList.get(i).level > bestWifiSignalLevel) {
-                                bestWifiSignalLevel = wifiScanList.get(i).level;
+                        // Get the most recent Wifi scan results
+                        List<ScanResult> wifiScanList = wifiManager.getScanResults();
+                        if (wifiScanList.size() > 0) {
+                            bestWifiSignalLevel = wifiScanList.get(0).level;
+                            for (int i = 1; i < wifiScanList.size(); i++) {
+                                // if better signal level
+                                if (wifiScanList.get(i).level > bestWifiSignalLevel) {
+                                    bestWifiSignalLevel = wifiScanList.get(i).level;
+                                }
                             }
                         }
+
+                        // Get the Cell results
+                        List<CellInfo> cInfoList = telephonyManager.getAllCellInfo();
+                        bestUMTSSignal = getBestValueOfSignal(cInfoList, CellInfoWcdma.class);
+                        bestLteSignal = getBestValueOfSignal(cInfoList, CellInfoLte.class);
+
+                        if (lastScanTime - lastSavedWifiDatetime >= sampleInterval.getIntervalMs())
+                            shouldSaveWifi = true;
+                        if (lastScanTime - lastSavedUMTSDatetime >= sampleInterval.getIntervalMs())
+                            shouldSaveUMTS = true;
+                        if (lastScanTime - lastSavedLTEDatetime >= sampleInterval.getIntervalMs())
+                            shouldSaveLTE = true;
+
+                        System.out.println("LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
+                        // TODO: abstract these calls into a repository
+                        if (bestWifiSignalLevel != null && shouldSaveWifi)
+                            signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
+                        if (bestUMTSSignal != null && shouldSaveUMTS)
+                            signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
+                        if (bestLteSignal != null && shouldSaveLTE)
+                            signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
                     }
-
-                    // Get the Cell results
-                    List<CellInfo> cInfoList = telephonyManager.getAllCellInfo();
-                    bestUMTSSignal = getBestValueOfSignal(cInfoList, CellInfoWcdma.class);
-                    bestLteSignal = getBestValueOfSignal(cInfoList, CellInfoLte.class);
-
-                    if(lastScanTime - lastSavedWifiDatetime >= sampleInterval.getIntervalMs()) shouldSaveWifi = true;
-                    if(lastScanTime - lastSavedUMTSDatetime >= sampleInterval.getIntervalMs()) shouldSaveUMTS = true;
-                    if(lastScanTime - lastSavedLTEDatetime >= sampleInterval.getIntervalMs()) shouldSaveLTE = true;
-
-                    System.out.println("LTE: "+bestLteSignal+" UMTS: "+bestUMTSSignal+" Wifi: "+bestWifiSignalLevel);
-                    // TODO: abstract these calls into a repository
-                    if(bestWifiSignalLevel != null && shouldSaveWifi) signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
-                    if(bestUMTSSignal != null && shouldSaveUMTS) signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
-                    if(bestLteSignal != null && shouldSaveLTE) signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
                 }
             });
         }
@@ -190,7 +199,14 @@ public class GPSLocationService extends Service{
     @Override
     public void onDestroy() {
         unregisterReceiver(wifiReceiver);
+        System.out.println("On destroy service");
         super.onDestroy();
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        System.out.println("On unbind");
+        return super.onUnbind(intent);
     }
 
     @Override

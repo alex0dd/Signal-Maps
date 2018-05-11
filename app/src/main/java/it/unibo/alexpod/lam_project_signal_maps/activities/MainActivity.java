@@ -1,6 +1,7 @@
 package it.unibo.alexpod.lam_project_signal_maps.activities;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
@@ -21,7 +22,6 @@ import android.widget.Spinner;
 import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment;
-import it.unibo.alexpod.lam_project_signal_maps.fragments.PreferencesFragment;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
 import it.unibo.alexpod.lam_project_signal_maps.services.GPSLocationService;
 
@@ -80,18 +80,21 @@ public class MainActivity extends AppCompatActivity {
                     mainToolbarSignalTypeSpinner.setVisibility(View.VISIBLE);
                 }
                 else if(item.getItemId() == R.id.nav_settings){
-                    fragment = new PreferencesFragment();
+                    Intent settingsIntent = new Intent();
+                    settingsIntent.setComponent(new ComponentName(getApplicationContext(), SettingsActivity.class));
+                    startActivity(settingsIntent);
                 }
+                // Set item as selected to persist highlight
+                item.setChecked(true);
+                // Close drawer when item is tapped
+                drawerLayout.closeDrawers();
+
                 // If no unknown fragments were selected
                 if(fragment != null) {
                     // Swap UI fragments
                     getSupportFragmentManager().beginTransaction()
                             .replace(R.id.fragment_container, fragment)
                             .commit();
-                    // Set item as selected to persist highlight
-                    item.setChecked(true);
-                    // Close drawer when item is tapped
-                    drawerLayout.closeDrawers();
                 }
                 return true;
             }
@@ -155,6 +158,16 @@ public class MainActivity extends AppCompatActivity {
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        //getApplicationContext().stopService(new Intent(getApplicationContext(), SettingsFragment.class));
     }
 }

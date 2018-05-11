@@ -50,12 +50,13 @@
                     app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
 
             </android.support.v7.widget.Toolbar>
+
             <FrameLayout
                 android:id="@+id/fragment_container"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_below="@id/mainToolbar">
-            </FrameLayout>
+                android:layout_below="@id/mainToolbar"
+                ></FrameLayout>
             <!--<fragment
                 android:id="@+id/mainFragment"
                 android:name="it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment"
