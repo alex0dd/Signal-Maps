@@ -1,6 +1,8 @@
 package it.unibo.alexpod.lam_project_signal_maps.services;
 
 import android.annotation.SuppressLint;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,11 +12,14 @@ import android.content.SharedPreferences;
 import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoWcdma;
@@ -31,6 +36,7 @@ import com.google.android.gms.tasks.Task;
 
 import java.util.List;
 
+import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SampleIntervalPreference;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.SettingsFragment;
@@ -43,6 +49,9 @@ public class GPSLocationService extends Service{
 
     private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 1; // 1 meter
     private static final long MIN_TIME_BW_UPDATES = 1000 * 1; // 1 second
+
+    private static final String SAMPLE_INTERVAL_PREFERENCE_KEY = "sample_interval_preference";
+    private static final String ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY = "sample_in_background";
 
     private FusedLocationProviderClient mFusedLocationClient;
 
@@ -80,8 +89,15 @@ public class GPSLocationService extends Service{
     @Override
     public void onCreate() {
         super.onCreate();
-        System.out.println("On create service");
-        HandlerThread handlerThread = new HandlerThread("GPSServiceThread");
+        // Get Telephony manager
+        telephonyManager = ((TelephonyManager)getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE));
+        // Get Wifi manager
+        wifiManager = ((WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE));
+        // Get shared preferences
+        preferences = getSharedPreferences(SettingsFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
+
+        // Declare location handler thread
+        HandlerThread handlerThread = new HandlerThread("LocationHandlerThread");
         LocationRequest mLocationRequest = new LocationRequest();
         LocationCallback mLocationCallback = new LocationCallback() {
             @Override
@@ -94,17 +110,17 @@ public class GPSLocationService extends Service{
         };
         mLocationRequest.setInterval(MIN_TIME_BW_UPDATES);
         mLocationRequest.setSmallestDisplacement(MIN_DISTANCE_CHANGE_FOR_UPDATES);
+        // if background sampling is enabled
+        if(preferences.getBoolean(ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, true)){
+            // perform sampling with higher accuracy
+            mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        }
+
 
         // Create client instance and request for updates
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, handlerThread.getLooper());
 
-        // Get Telephony manager
-        telephonyManager = ((TelephonyManager)getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE));
-        // Get Wifi manager
-        wifiManager = ((WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE));
-        // Get shared preferences
-        preferences = getSharedPreferences(SettingsFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
         // Start Wifi broadcast receiver on another thread
         wifiReceiver = new WifiScanReceiver();
         HandlerThread wifiHandlerThread = new HandlerThread("WifiHandlerThread");
@@ -118,6 +134,7 @@ public class GPSLocationService extends Service{
                 wifiHandler
         );
 
+        createNotificationChannel();
         // TODO: add permissions check(permissions might've been removed at runtime)
         // TODO: add gps turned on check
     }
@@ -134,7 +151,7 @@ public class GPSLocationService extends Service{
                     SignalDatabase dbInstance = SignalDatabase.getInstance(getApplicationContext());
                     SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
                     // Get interval preference
-                    String sampleIntervalPreference = preferences.getString("sample_interval_preference", "0");
+                    String sampleIntervalPreference = preferences.getString(SAMPLE_INTERVAL_PREFERENCE_KEY, "0");
                     // Transform it into SampleIntervalPreference
                     SampleIntervalPreference sampleInterval = SampleIntervalPreference.values()[Integer.parseInt(sampleIntervalPreference)];
                     // Get last known location
@@ -144,7 +161,8 @@ public class GPSLocationService extends Service{
                         LatLng latLngLocation = new LatLng(location.getLatitude(), location.getLongitude());
                         String locationQuadrant = CoordinateConverter.LatLngToMgrsQuadrant(latLngLocation);
                         Integer bestWifiSignalLevel = null;
-                        Integer bestUMTSSignal, bestLteSignal = null;
+                        Integer bestUMTSSignal = null;
+                        Integer bestLteSignal = null;
                         boolean shouldSaveWifi = false;
                         boolean shouldSaveUMTS = false;
                         boolean shouldSaveLTE = false;
@@ -182,7 +200,7 @@ public class GPSLocationService extends Service{
                         if (lastScanTime - lastSavedLTEDatetime >= sampleInterval.getIntervalMs())
                             shouldSaveLTE = true;
 
-                        System.out.println("LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
+                        //System.out.println("LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
                         // TODO: abstract these calls into a repository
                         if (bestWifiSignalLevel != null && shouldSaveWifi)
                             signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
@@ -190,28 +208,64 @@ public class GPSLocationService extends Service{
                             signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
                         if (bestLteSignal != null && shouldSaveLTE)
                             signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
+                        //sendNotification(locationQuadrant, "LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
                     }
                 }
             });
         }
     }
 
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            //int importance = NotificationManager.IMPORTANCE_LOW;//.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(NotificationCompat.CATEGORY_SERVICE, name, importance);
+            channel.setSound(null, null);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+
+    public void sendNotification(String title, String message){
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, NotificationCompat.CATEGORY_SERVICE)
+                .setSmallIcon(R.drawable.notification_icon)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+        // notificationId is a unique int for each notification that you must define
+        notificationManager.notify(1, mBuilder.build());
+
+    }
+
     @Override
     public void onDestroy() {
-        unregisterReceiver(wifiReceiver);
-        System.out.println("On destroy service");
+        // if background sampling is not enabled
+        if(!preferences.getBoolean(ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, false)){
+            unregisterReceiver(wifiReceiver);
+        }
         super.onDestroy();
     }
 
     @Override
-    public boolean onUnbind(Intent intent) {
-        System.out.println("On unbind");
-        return super.onUnbind(intent);
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
+    public int onStartCommand(Intent intent, int flags, int startId)
+    {
+        // if background sampling is not enabled
+        if(!preferences.getBoolean(ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, false)){
+            return START_NOT_STICKY;
+        }
+        else{
+            return START_STICKY;
+        }
     }
 
     @Nullable
