@@ -1,9 +1,10 @@
 <resources>
     <string name="app_name">LAM_Project_Signal_Maps</string>
+    <!-- Menu Icons -->
+    <string name="action_refresh">Refresh</string>
     <!-- Notifications -->
     <string name="channel_name">Signal Maps</string>
     <string name="channel_description">Signal Maps project application notifications channel</string>
-
     <!-- Spinners -->
     <string name="wifi_map_tab_title">Wifi</string>
     <string name="umts_map_tab_title">UMTS</string>

@@ -50,9 +50,6 @@ public class GPSLocationService extends Service{
     private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 1; // 1 meter
     private static final long MIN_TIME_BW_UPDATES = 1000 * 1; // 1 second
 
-    private static final String SAMPLE_INTERVAL_PREFERENCE_KEY = "sample_interval_preference";
-    private static final String ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY = "sample_in_background";
-
     private FusedLocationProviderClient mFusedLocationClient;
 
     private WifiScanReceiver wifiReceiver;
@@ -111,7 +108,7 @@ public class GPSLocationService extends Service{
         mLocationRequest.setInterval(MIN_TIME_BW_UPDATES);
         mLocationRequest.setSmallestDisplacement(MIN_DISTANCE_CHANGE_FOR_UPDATES);
         // if background sampling is enabled
-        if(preferences.getBoolean(ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, true)){
+        if(preferences.getBoolean(SettingsFragment.ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, true)){
             // perform sampling with higher accuracy
             mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         }
@@ -151,7 +148,7 @@ public class GPSLocationService extends Service{
                     SignalDatabase dbInstance = SignalDatabase.getInstance(getApplicationContext());
                     SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
                     // Get interval preference
-                    String sampleIntervalPreference = preferences.getString(SAMPLE_INTERVAL_PREFERENCE_KEY, "0");
+                    String sampleIntervalPreference = preferences.getString(SettingsFragment.SAMPLE_INTERVAL_PREFERENCE_KEY, "0");
                     // Transform it into SampleIntervalPreference
                     SampleIntervalPreference sampleInterval = SampleIntervalPreference.values()[Integer.parseInt(sampleIntervalPreference)];
                     // Get last known location
@@ -208,7 +205,7 @@ public class GPSLocationService extends Service{
                             signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
                         if (bestLteSignal != null && shouldSaveLTE)
                             signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
-                        //sendNotification(locationQuadrant, "LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
+                        sendNotification(locationQuadrant, "LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
                     }
                 }
             });
@@ -250,7 +247,7 @@ public class GPSLocationService extends Service{
     @Override
     public void onDestroy() {
         // if background sampling is not enabled
-        if(!preferences.getBoolean(ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, false)){
+        if(!preferences.getBoolean(SettingsFragment.ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, false)){
             unregisterReceiver(wifiReceiver);
         }
         super.onDestroy();
@@ -260,7 +257,7 @@ public class GPSLocationService extends Service{
     public int onStartCommand(Intent intent, int flags, int startId)
     {
         // if background sampling is not enabled
-        if(!preferences.getBoolean(ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, false)){
+        if(!preferences.getBoolean(SettingsFragment.ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY, false)){
             return START_NOT_STICKY;
         }
         else{

@@ -13,6 +13,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
 import android.os.Bundle;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -34,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private MapsFragment mapsFragment;
+    private SignalType currentSignalType = SignalType.Wifi;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -130,7 +132,9 @@ public class MainActivity extends AppCompatActivity {
         mainToolbarSignalTypeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                mapsFragment.setSignalType(SignalType.values()[position]);
+                // store the current signal type for refresh usage
+                currentSignalType = SignalType.values()[position];
+                mapsFragment.setSignalType(currentSignalType);
             }
 
             @Override
@@ -156,6 +160,10 @@ public class MainActivity extends AppCompatActivity {
             case android.R.id.home:
                 drawerLayout.openDrawer(GravityCompat.START);
                 return true;
+            case R.id.action_refresh:
+                // refresh the signal
+                mapsFragment.setSignalType(currentSignalType);
+                return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -168,6 +176,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        //getApplicationContext().stopService(new Intent(getApplicationContext(), SettingsFragment.class));
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
     }
 }

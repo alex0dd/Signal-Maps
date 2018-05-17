@@ -44,11 +44,9 @@
                     android:layout_alignLeft="@+id/mainToolbar"
                     android:layout_alignStart="@+id/mainToolbar"
                     android:layout_below="@+id/mainToolbar"
-                    android:layout_marginEnd="8dp"
-                    android:layout_marginRight="8dp"
+                    android:layout_margin="0dp"
                     android:gravity="end"
                     app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
-
             </android.support.v7.widget.Toolbar>
 
             <FrameLayout
