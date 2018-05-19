@@ -35,6 +35,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
@@ -44,6 +45,7 @@ import it.unibo.alexpod.lam_project_signal_maps.fragments.SettingsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalRepository;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSampleDao;
 
@@ -62,6 +64,7 @@ public class GPSLocationService extends Service{
 
     private SharedPreferences preferences;
     private PermissionsRequester permissionsRequester;
+    private SignalRepository signalRepository;
 
     @Override
     public void onCreate() {
@@ -74,6 +77,8 @@ public class GPSLocationService extends Service{
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         // Get shared preferences
         preferences = getSharedPreferences(SettingsFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
+        // Get signal repository
+        signalRepository = new SignalRepository(getApplication());
 
         // Get permissions requester
         permissionsRequester = new PermissionsRequester(null, getApplicationContext());
@@ -154,10 +159,6 @@ public class GPSLocationService extends Service{
             mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
                 @Override
                 public void onComplete(@NonNull Task<Location> task) {
-                    // TODO: wrap the database calls into a repository pattern
-                    // Get the database instance
-                    SignalDatabase dbInstance = SignalDatabase.getInstance(getApplicationContext());
-                    SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
                     // Get interval preference
                     String sampleIntervalPreference = preferences.getString(SettingsFragment.SAMPLE_INTERVAL_PREFERENCE_KEY, "0");
                     // Transform it into SampleIntervalPreference
@@ -175,9 +176,9 @@ public class GPSLocationService extends Service{
                         boolean shouldSaveUMTS = false;
                         boolean shouldSaveLTE = false;
                         // Last samples of each signal type
-                        SignalSample lastSavedWifiSample = signalSampleDao.getLastSample(SignalType.Wifi.getValue());
-                        SignalSample lastSavedUMTSSample = signalSampleDao.getLastSample(SignalType.UMTS.getValue());
-                        SignalSample lastSavedLTESample = signalSampleDao.getLastSample(SignalType.LTE.getValue());
+                        SignalSample lastSavedWifiSample = signalRepository.getLastSample(SignalType.Wifi);
+                        SignalSample lastSavedUMTSSample = signalRepository.getLastSample(SignalType.UMTS);
+                        SignalSample lastSavedLTESample = signalRepository.getLastSample(SignalType.LTE);
                         // Datetimes which indicate when the last sample of each signal got saved
                         long lastSavedWifiDatetime = lastSavedWifiSample != null ? lastSavedWifiSample.datetime : 0;
                         long lastSavedUMTSDatetime = lastSavedUMTSSample != null ? lastSavedUMTSSample.datetime : 0;
@@ -208,15 +209,15 @@ public class GPSLocationService extends Service{
                         if (lastScanTime - lastSavedLTEDatetime >= sampleInterval.getIntervalMs())
                             shouldSaveLTE = true;
 
-                        //System.out.println("LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
-                        // TODO: abstract these calls into a repository
-                        // TODO: optimize query to update the existing zone rather than pushing new data
+                        // TODO: (maybe) optimize query to update the existing zone rather than pushing new data
+                        LinkedList<SignalSample> samplesToInsert = new LinkedList<>();
                         if (bestWifiSignalLevel != null && shouldSaveWifi)
-                            signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
+                            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
                         if (bestUMTSSignal != null && shouldSaveUMTS)
-                            signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
+                            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
                         if (bestLteSignal != null && shouldSaveLTE)
-                            signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
+                            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
+                        signalRepository.insertSamples(samplesToInsert.toArray(new SignalSample[samplesToInsert.size()]));
                         sendNotification(locationQuadrant, "LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
                     }
                 }

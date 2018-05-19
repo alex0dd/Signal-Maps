@@ -27,9 +27,8 @@ import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
-import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalMgrsAvgCount;
-import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSampleDao;
+import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalRepository;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MapsDrawUtilities;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MathUtils;
 
@@ -45,16 +44,19 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
     private PermissionsRequester permissionsRequester = null;
     private SharedPreferences preferences;
 
+    private SignalRepository signalRepository;
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        System.out.println("onCreate");
         permissionsRequester = new PermissionsRequester(
                 this.getActivity(),
                 this.getContext()
         );
         // Get shared preferences
         preferences = getContext().getSharedPreferences(SettingsFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
+        // Get signal repository
+        signalRepository = new SignalRepository(getActivity().getApplication());
     }
 
     @Nullable
@@ -90,13 +92,10 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         }
     }
 
-    private HashMap<LatLng, SignalMgrsAvgCount> getData(int type) {
+    private HashMap<LatLng, SignalMgrsAvgCount> getData(SignalType type) {
         HashMap<LatLng, SignalMgrsAvgCount> mapPoints = new HashMap<>();
-        SignalDatabase dbInstance = SignalDatabase.getInstance(getContext());
-        SignalSampleDao signalSampleDao = dbInstance.getSignalSampleDao();
-        List<SignalMgrsAvgCount> samplesMgrsAvgCount = signalSampleDao.getAllSamplesAndCountPerZone(type);
+        List<SignalMgrsAvgCount> samplesMgrsAvgCount = signalRepository.getAllSamplesAndCountPerZone(type);
         for (SignalMgrsAvgCount sample : samplesMgrsAvgCount) {
-            System.out.println("mgrs: " + sample.mgrs + " power: " + sample.avgPower + " count: " + sample.samplesCount);
             mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample);
         }
         return mapPoints;
@@ -111,7 +110,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
             // Reset points on the map
             mMap.clear();
             // Get data from a persistent store
-            HashMap<LatLng, SignalMgrsAvgCount> mapPoints = getData(type.getValue());
+            HashMap<LatLng, SignalMgrsAvgCount> mapPoints = getData(type);
             // Draw squares on map
             for (Map.Entry<LatLng, SignalMgrsAvgCount> point : mapPoints.entrySet()) {
                 LatLng latLngQuadrant = point.getKey();
