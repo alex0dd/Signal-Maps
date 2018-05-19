@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="display_user_location_preference_key">display_user_location</string>
+    <string name="sample_in_background_preference_key">sample_in_background</string>
+    <string name="sample_interval_preference_key">sample_interval_preference</string>
+</resources>

@@ -11,11 +11,8 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
-
-/**
- * Created by alexpod on 14/04/18.
- */
 
 public class PermissionsRequester {
 
@@ -45,6 +42,14 @@ public class PermissionsRequester {
         return granted;
     }
 
+    public void requirePermissions(List<String> permissions){
+        if(permissions != null) {
+            for (String permission : permissions) {
+                this.requirePermission(permission);
+            }
+        }
+    }
+
     public void requirePermission(String permissionName){
         //https://stackoverflow.com/questions/36820668/request-permission-on-package-usage-stats
         //if permission is not already into the permissions table
@@ -54,12 +59,14 @@ public class PermissionsRequester {
             //increment permissions id
             this.currentPermissionRequestCode++;
         }
+        // If it's a special kind of permission(which requires the user to go to settings)
         if(Objects.equals(permissionName, Manifest.permission.PACKAGE_USAGE_STATS)){
             if(!checkSpecialPermission(permissionName)){
                 this.applicationContext.startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
             }
         }
         else {
+            // If permission hasn't been granted yet
             if (ContextCompat.checkSelfPermission(this.requestingActivity,
                     permissionName)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -73,20 +80,17 @@ public class PermissionsRequester {
                     // this thread waiting for the user's response! After the user
                     // sees the explanation, try again to request the permission.
 
-                } else {
-                    // No explanation needed; request the permission
-                    ActivityCompat.requestPermissions(this.requestingActivity,
-                            new String[]{permissionName},
-                            this.permissionsMap.get(permissionName));
-
-                    // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
-                    // app-defined int constant. The callback method gets the
-                    // result of the request.
                 }
-            } else {
-                // Permission has already been granted
+                // No explanation needed; request the permission
+                ActivityCompat.requestPermissions(this.requestingActivity,
+                        new String[]{permissionName},
+                        this.permissionsMap.get(permissionName));
             }
         }
+    }
+
+    public boolean isGranted(String permission){
+        return ContextCompat.checkSelfPermission(this.applicationContext, permission) == PackageManager.PERMISSION_GRANTED;
     }
 
 }

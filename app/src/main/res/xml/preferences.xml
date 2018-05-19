@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-        <PreferenceCategory android:title="@string/sampling_preferences_title">
-            <SwitchPreferenceCompat
-                android:defaultValue="false"
-                android:key="sample_in_background"
-                android:summary="@string/sample_in_background_preference_description"
-                android:title="@string/sample_in_background_preference_title" />
-            <ListPreference
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:entries="@array/sample_interval_entries_list_preference"
-                android:entryValues="@array/sample_interval_entryvalues_list_preference"
-                android:key="sample_interval_preference"
-                android:summary="@string/sample_interval_preference_description"
-                android:title="@string/sample_interval_preference_title" />
-        </PreferenceCategory>
+    <PreferenceCategory android:title="@string/location_preferences_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="@string/display_user_location_preference_key"
+            android:summary="@string/display_user_location_preference_description"
+            android:title="@string/display_user_location_preference_title" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/sampling_preferences_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="@string/sample_in_background_preference_key"
+            android:summary="@string/sample_in_background_preference_description"
+            android:title="@string/sample_in_background_preference_title" />
+        <ListPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:entries="@array/sample_interval_entries_list_preference"
+            android:entryValues="@array/sample_interval_entryvalues_list_preference"
+            android:key="@string/sample_interval_preference_key"
+            android:summary="@string/sample_interval_preference_description"
+            android:title="@string/sample_interval_preference_title" />
+    </PreferenceCategory>
 </PreferenceScreen>

@@ -15,6 +15,7 @@ import it.unibo.alexpod.lam_project_signal_maps.R;
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     public static final String PREFERENCES_NAME = SettingsFragment.class.getSimpleName();
+    public static final String DISPLAY_USER_LOCATION_PREFERENCE_KEY = "display_user_location";
     public static final String SAMPLE_INTERVAL_PREFERENCE_KEY = "sample_interval_preference";
     public static final String ENABLE_BACKGROUND_SAMPLING_PREFERENCE_KEY = "sample_in_background";
 

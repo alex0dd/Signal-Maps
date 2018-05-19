@@ -1,6 +1,6 @@
 package it.unibo.alexpod.lam_project_signal_maps.services;
 
-import android.annotation.SuppressLint;
+import android.Manifest;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.location.Location;
+import android.location.LocationManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -41,6 +42,7 @@ import it.unibo.alexpod.lam_project_signal_maps.enums.SampleIntervalPreference;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.SettingsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
+import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSampleDao;
@@ -56,33 +58,11 @@ public class GPSLocationService extends Service{
 
     private WifiManager wifiManager;
     private TelephonyManager telephonyManager;
+    private LocationManager locationManager;
 
     private SharedPreferences preferences;
+    private PermissionsRequester permissionsRequester;
 
-    public Integer getBestValueOfSignal(List<CellInfo> cInfoList, Class<?> cellClass){
-        Integer bestValue = null;
-        Integer comparisonValue = 99;
-        if(cInfoList.size() > 0 && (cellClass.equals(CellInfoWcdma.class) || cellClass.equals(CellInfoLte.class))){
-            for(CellInfo cellInfo : cInfoList){
-                // if the cell is of the right class and is registred
-                if(cellClass.isInstance(cellInfo) && cellInfo.isRegistered()) {
-                    // the cellClass is either CellInfoLte or CellInfoWcdma so one of the two branches will be executed
-                    if (cellClass.equals(CellInfoLte.class)) {
-                        comparisonValue = ((CellInfoLte) cellInfo).getCellSignalStrength().getAsuLevel();
-                    } else if (cellClass.equals(CellInfoWcdma.class)) {
-                        comparisonValue = ((CellInfoWcdma) cellInfo).getCellSignalStrength().getAsuLevel();
-                    }
-                    // if comparisonValue is not unknown
-                    if(comparisonValue != 99) {
-                        bestValue = bestValue != null ? Math.max(bestValue, comparisonValue) : comparisonValue;
-                    }
-                }
-            }
-        }
-        return bestValue;
-    }
-
-    @SuppressLint("MissingPermission")
     @Override
     public void onCreate() {
         super.onCreate();
@@ -90,8 +70,13 @@ public class GPSLocationService extends Service{
         telephonyManager = ((TelephonyManager)getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE));
         // Get Wifi manager
         wifiManager = ((WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE));
+        // Get Location manager
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         // Get shared preferences
         preferences = getSharedPreferences(SettingsFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
+
+        // Get permissions requester
+        permissionsRequester = new PermissionsRequester(null, getApplicationContext());
 
         // Declare location handler thread
         HandlerThread handlerThread = new HandlerThread("LocationHandlerThread");
@@ -113,31 +98,57 @@ public class GPSLocationService extends Service{
             mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         }
 
+        // if any location permission is enabled and gps is enabled
+        if(permissionsRequester.isGranted(Manifest.permission.ACCESS_FINE_LOCATION) ||
+                permissionsRequester.isGranted(Manifest.permission.ACCESS_COARSE_LOCATION) &&
+                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
 
-        // Create client instance and request for updates
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, handlerThread.getLooper());
+            // Start Wifi broadcast receiver on another thread
+            wifiReceiver = new WifiScanReceiver();
+            HandlerThread wifiHandlerThread = new HandlerThread("WifiHandlerThread");
+            wifiHandlerThread.start();
+            // Get the new thread's handler
+            Handler wifiHandler = new Handler(wifiHandlerThread.getLooper());
+            registerReceiver(
+                    wifiReceiver,
+                    new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
+                    null,
+                    wifiHandler
+            );
 
-        // Start Wifi broadcast receiver on another thread
-        wifiReceiver = new WifiScanReceiver();
-        HandlerThread wifiHandlerThread = new HandlerThread("WifiHandlerThread");
-        wifiHandlerThread.start();
-        // Get the new thread's handler
-        Handler wifiHandler = new Handler(wifiHandlerThread.getLooper());
-        registerReceiver(
-                wifiReceiver,
-                new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
-                null,
-                wifiHandler
-        );
+            // Create client instance and request for updates
+            mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, handlerThread.getLooper());
+        }
 
         createNotificationChannel();
-        // TODO: add permissions check(permissions might've been removed at runtime)
-        // TODO: add gps turned on check
     }
 
     private class WifiScanReceiver extends BroadcastReceiver {
-        @SuppressLint("MissingPermission")
+
+        public Integer getBestValueOfSignal(List<CellInfo> cInfoList, Class<?> cellClass){
+            Integer bestValue = null;
+            Integer comparisonValue = 99;
+            if(cInfoList.size() > 0 && (cellClass.equals(CellInfoWcdma.class) || cellClass.equals(CellInfoLte.class))){
+                for(CellInfo cellInfo : cInfoList){
+                    // if the cell is of the right class and is registred
+                    if(cellClass.isInstance(cellInfo) && cellInfo.isRegistered()) {
+                        // the cellClass is either CellInfoLte or CellInfoWcdma so one of the two branches will be executed
+                        if (cellClass.equals(CellInfoLte.class)) {
+                            comparisonValue = ((CellInfoLte) cellInfo).getCellSignalStrength().getAsuLevel();
+                        } else if (cellClass.equals(CellInfoWcdma.class)) {
+                            comparisonValue = ((CellInfoWcdma) cellInfo).getCellSignalStrength().getAsuLevel();
+                        }
+                        // if comparisonValue is not unknown
+                        if(comparisonValue != 99) {
+                            bestValue = bestValue != null ? Math.max(bestValue, comparisonValue) : comparisonValue;
+                        }
+                    }
+                }
+            }
+            return bestValue;
+        }
+
         public void onReceive(Context c, Intent intent) {
             // Attach callback for last known location
             mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
@@ -199,6 +210,7 @@ public class GPSLocationService extends Service{
 
                         //System.out.println("LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
                         // TODO: abstract these calls into a repository
+                        // TODO: optimize query to update the existing zone rather than pushing new data
                         if (bestWifiSignalLevel != null && shouldSaveWifi)
                             signalSampleDao.insert(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
                         if (bestUMTSSignal != null && shouldSaveUMTS)
@@ -241,7 +253,6 @@ public class GPSLocationService extends Service{
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT);
         // notificationId is a unique int for each notification that you must define
         notificationManager.notify(1, mBuilder.build());
-
     }
 
     @Override

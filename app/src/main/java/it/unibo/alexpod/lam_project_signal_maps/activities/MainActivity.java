@@ -20,6 +20,8 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
+import java.util.Arrays;
+
 import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment;
@@ -66,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Start the gps data gathering service
         startService(new Intent(getApplicationContext(), GPSLocationService.class));
+        // TODO: add a visualization of sampled data in a list or a chart
     }
 
     private void initializeNavigationView() {
@@ -147,10 +150,12 @@ public class MainActivity extends AppCompatActivity {
                 this,
                 getApplicationContext()
         );
-        permissionsRequester.requirePermission(Manifest.permission.ACCESS_COARSE_LOCATION);
-        permissionsRequester.requirePermission(Manifest.permission.ACCESS_FINE_LOCATION);
-        permissionsRequester.requirePermission(Manifest.permission.ACCESS_WIFI_STATE);
-        permissionsRequester.requirePermission(Manifest.permission.CHANGE_WIFI_STATE);
+        permissionsRequester.requirePermissions(Arrays.asList(
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_WIFI_STATE,
+                Manifest.permission.CHANGE_WIFI_STATE
+        ));
     }
 
     @Override
@@ -182,5 +187,13 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if(this.mapsFragment != null) {
+            // attempt to set user location enabled on map
+            this.mapsFragment.setUserLocationEnabled();
+        }
     }
 }
