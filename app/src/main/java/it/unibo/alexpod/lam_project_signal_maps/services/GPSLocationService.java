@@ -37,6 +37,7 @@ import com.google.android.gms.tasks.Task;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SampleIntervalPreference;
@@ -44,10 +45,8 @@ import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.SettingsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
-import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalDatabase;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalRepository;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
-import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSampleDao;
 
 public class GPSLocationService extends Service{
 
@@ -65,6 +64,15 @@ public class GPSLocationService extends Service{
     private SharedPreferences preferences;
     private PermissionsRequester permissionsRequester;
     private SignalRepository signalRepository;
+
+    // Executor which is used by getLastLocation's event handler to run on another thread
+    private final Executor locationExecutor = new Executor() {
+        @Override
+        public void execute(@NonNull Runnable command) {
+            command.run();
+        }
+    };
+
 
     @Override
     public void onCreate() {
@@ -84,7 +92,9 @@ public class GPSLocationService extends Service{
         permissionsRequester = new PermissionsRequester(null, getApplicationContext());
 
         // Declare location handler thread
-        HandlerThread handlerThread = new HandlerThread("LocationHandlerThread");
+        HandlerThread locationHandlerThread = new HandlerThread("LocationHandlerThread");
+        locationHandlerThread.start();
+
         LocationRequest mLocationRequest = new LocationRequest();
         LocationCallback mLocationCallback = new LocationCallback() {
             @Override
@@ -120,10 +130,9 @@ public class GPSLocationService extends Service{
                     null,
                     wifiHandler
             );
-
             // Create client instance and request for updates
             mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-            mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, handlerThread.getLooper());
+            mFusedLocationClient.requestLocationUpdates(mLocationRequest, mLocationCallback, locationHandlerThread.getLooper());
         }
 
         createNotificationChannel();
@@ -156,13 +165,9 @@ public class GPSLocationService extends Service{
 
         public void onReceive(Context c, Intent intent) {
             // Attach callback for last known location
-            mFusedLocationClient.getLastLocation().addOnCompleteListener(new OnCompleteListener<Location>() {
+            mFusedLocationClient.getLastLocation().addOnCompleteListener(locationExecutor, new OnCompleteListener<Location>() {
                 @Override
                 public void onComplete(@NonNull Task<Location> task) {
-                    // Get interval preference
-                    String sampleIntervalPreference = preferences.getString(SettingsFragment.SAMPLE_INTERVAL_PREFERENCE_KEY, "0");
-                    // Transform it into SampleIntervalPreference
-                    SampleIntervalPreference sampleInterval = SampleIntervalPreference.values()[Integer.parseInt(sampleIntervalPreference)];
                     // Get last known location
                     Location location = task.getResult();
                     // location can get null
@@ -172,17 +177,6 @@ public class GPSLocationService extends Service{
                         Integer bestWifiSignalLevel = null;
                         Integer bestUMTSSignal = null;
                         Integer bestLteSignal = null;
-                        boolean shouldSaveWifi = false;
-                        boolean shouldSaveUMTS = false;
-                        boolean shouldSaveLTE = false;
-                        // Last samples of each signal type
-                        SignalSample lastSavedWifiSample = signalRepository.getLastSample(SignalType.Wifi);
-                        SignalSample lastSavedUMTSSample = signalRepository.getLastSample(SignalType.UMTS);
-                        SignalSample lastSavedLTESample = signalRepository.getLastSample(SignalType.LTE);
-                        // Datetimes which indicate when the last sample of each signal got saved
-                        long lastSavedWifiDatetime = lastSavedWifiSample != null ? lastSavedWifiSample.datetime : 0;
-                        long lastSavedUMTSDatetime = lastSavedUMTSSample != null ? lastSavedUMTSSample.datetime : 0;
-                        long lastSavedLTEDatetime = lastSavedLTESample != null ? lastSavedLTESample.datetime : 0;
                         long lastScanTime = location.getTime();
 
                         // Get the most recent Wifi scan results
@@ -201,28 +195,47 @@ public class GPSLocationService extends Service{
                         List<CellInfo> cInfoList = telephonyManager.getAllCellInfo();
                         bestUMTSSignal = getBestValueOfSignal(cInfoList, CellInfoWcdma.class);
                         bestLteSignal = getBestValueOfSignal(cInfoList, CellInfoLte.class);
-
-                        if (lastScanTime - lastSavedWifiDatetime >= sampleInterval.getIntervalMs())
-                            shouldSaveWifi = true;
-                        if (lastScanTime - lastSavedUMTSDatetime >= sampleInterval.getIntervalMs())
-                            shouldSaveUMTS = true;
-                        if (lastScanTime - lastSavedLTEDatetime >= sampleInterval.getIntervalMs())
-                            shouldSaveLTE = true;
-
-                        // TODO: (maybe) optimize query to update the existing zone rather than pushing new data
-                        LinkedList<SignalSample> samplesToInsert = new LinkedList<>();
-                        if (bestWifiSignalLevel != null && shouldSaveWifi)
-                            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
-                        if (bestUMTSSignal != null && shouldSaveUMTS)
-                            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
-                        if (bestLteSignal != null && shouldSaveLTE)
-                            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
-                        signalRepository.insertSamples(samplesToInsert.toArray(new SignalSample[samplesToInsert.size()]));
-                        sendNotification(locationQuadrant, "LTE: " + bestLteSignal + " UMTS: " + bestUMTSSignal + " Wifi: " + bestWifiSignalLevel);
+                        // Attempt to the samples
+                        saveSamples(locationQuadrant, lastScanTime, bestWifiSignalLevel, bestUMTSSignal, bestLteSignal);
                     }
                 }
             });
         }
+    }
+
+    private void saveSamples(String locationQuadrant, long lastScanTime, Integer bestWifiSignalLevel, Integer bestUMTSSignal, Integer bestLteSignal) {
+        // Get interval preference
+        String sampleIntervalPreference = preferences.getString(SettingsFragment.SAMPLE_INTERVAL_PREFERENCE_KEY, "0");
+        // Transform it into SampleIntervalPreference
+        SampleIntervalPreference sampleInterval = SampleIntervalPreference.values()[Integer.parseInt(sampleIntervalPreference)];
+        // Last samples of each signal type
+        SignalSample lastSavedWifiSample = signalRepository.getLastSample(SignalType.Wifi);
+        SignalSample lastSavedUMTSSample = signalRepository.getLastSample(SignalType.UMTS);
+        SignalSample lastSavedLTESample = signalRepository.getLastSample(SignalType.LTE);
+        // Datetimes which indicate when the last sample of each signal got saved
+        long lastSavedWifiDatetime = lastSavedWifiSample != null ? lastSavedWifiSample.datetime : 0;
+        long lastSavedUMTSDatetime = lastSavedUMTSSample != null ? lastSavedUMTSSample.datetime : 0;
+        long lastSavedLTEDatetime = lastSavedLTESample != null ? lastSavedLTESample.datetime : 0;
+        // flags which indicate if a particular signal type sample should be saved
+        boolean shouldSaveWifi = false;
+        boolean shouldSaveUMTS = false;
+        boolean shouldSaveLTE = false;
+        if (lastScanTime - lastSavedWifiDatetime >= sampleInterval.getIntervalMs())
+            shouldSaveWifi = true;
+        if (lastScanTime - lastSavedUMTSDatetime >= sampleInterval.getIntervalMs())
+            shouldSaveUMTS = true;
+        if (lastScanTime - lastSavedLTEDatetime >= sampleInterval.getIntervalMs())
+            shouldSaveLTE = true;
+
+        // TODO: (maybe) optimize query to update the existing zone rather than pushing new data
+        LinkedList<SignalSample> samplesToInsert = new LinkedList<>();
+        if (bestWifiSignalLevel != null && shouldSaveWifi)
+            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));
+        if (bestUMTSSignal != null && shouldSaveUMTS)
+            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestUMTSSignal, SignalType.UMTS));
+        if (bestLteSignal != null && shouldSaveLTE)
+            samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestLteSignal, SignalType.LTE));
+        signalRepository.insertSamples(samplesToInsert.toArray(new SignalSample[samplesToInsert.size()]));
     }
 
     private void createNotificationChannel() {

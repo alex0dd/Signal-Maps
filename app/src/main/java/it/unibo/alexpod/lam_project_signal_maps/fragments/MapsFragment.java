@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -34,9 +35,9 @@ import it.unibo.alexpod.lam_project_signal_maps.utils.MathUtils;
 
 public class MapsFragment extends Fragment implements OnMapReadyCallback, ActivityCompat.OnRequestPermissionsResultCallback {
 
-    private int SAMPLES_FOR_MAX_INTENSITY = 10;
+    private static int SAMPLES_FOR_MAX_INTENSITY = 10;
 
-    private double quadrantsDistance = 10.1; //10.1 meters
+    private static double quadrantsDistance = 10.1; //10.1 meters
     private SupportMapFragment mMapView;
 
     private CameraPosition lastCameraPosition = null;
@@ -62,7 +63,6 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
-        System.out.println("onCreateView");
         View view = inflater.inflate(R.layout.maps_fragment, container, false);
         mMapView = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         mMapView.getMapAsync(this);
@@ -92,45 +92,40 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         }
     }
 
-    private HashMap<LatLng, SignalMgrsAvgCount> getData(SignalType type) {
-        HashMap<LatLng, SignalMgrsAvgCount> mapPoints = new HashMap<>();
-        List<SignalMgrsAvgCount> samplesMgrsAvgCount = signalRepository.getAllSamplesAndCountPerZone(type);
-        for (SignalMgrsAvgCount sample : samplesMgrsAvgCount) {
-            mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample);
-        }
-        return mapPoints;
-    }
-
     /*
     * type: 0: Wifi, 1: UMTS, 2: LTE
     * */
-    public void setSignalType(SignalType type) {
-        GoogleMap mMap = this.currentMap;
+    public void setSignalType(final SignalType type) {
+        final GoogleMap mMap = this.currentMap;
         if (mMap != null) {
-            // Reset points on the map
-            mMap.clear();
-            // Get data from a persistent store
-            HashMap<LatLng, SignalMgrsAvgCount> mapPoints = getData(type);
-            // Draw squares on map
-            for (Map.Entry<LatLng, SignalMgrsAvgCount> point : mapPoints.entrySet()) {
-                LatLng latLngQuadrant = point.getKey();
-                float sampledValue = point.getValue().avgPower;
-                long samplesCount = point.getValue().samplesCount;
+            LoadSamplesAsyncTask loadSamplesAsyncTask = new LoadSamplesAsyncTask(signalRepository, type, mMap);
+            loadSamplesAsyncTask.execute();
 
-                float rescaledValue = sampledValue;
-                // Rescale differently according to signal type
-                if (type == SignalType.Wifi)
-                    rescaledValue = MathUtils.rescaleInInterval(sampledValue, -100, 0, 0, 1);
-                else if (type == SignalType.UMTS)
-                    rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 31, 0, 1);
-                else if (type == SignalType.LTE)
-                    rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 97, 0, 1);
-                // Scale alpha according do number of samples
-                int alpha = 100 + Math.min(SAMPLES_FOR_MAX_INTENSITY * 10, (int) samplesCount * 10);
-                int color = MathUtils.interpolateColors(Color.RED, Color.GREEN, alpha, rescaledValue);
+        }
+    }
 
-                MapsDrawUtilities.drawSquare(mMap, latLngQuadrant, quadrantsDistance, color);
-            }
+    private static void renderSamplesOnMap(SignalType type, GoogleMap mMap, HashMap<LatLng, SignalMgrsAvgCount> mapPoints) {
+        // Reset points on the map
+        mMap.clear();
+        // Draw squares on map
+        for (Map.Entry<LatLng, SignalMgrsAvgCount> point : mapPoints.entrySet()) {
+            LatLng latLngQuadrant = point.getKey();
+            float sampledValue = point.getValue().avgPower;
+            long samplesCount = point.getValue().samplesCount;
+
+            float rescaledValue = sampledValue;
+            // Rescale differently according to signal type
+            if (type == SignalType.Wifi)
+                rescaledValue = MathUtils.rescaleInInterval(sampledValue, -100, 0, 0, 1);
+            else if (type == SignalType.UMTS)
+                rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 31, 0, 1);
+            else if (type == SignalType.LTE)
+                rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 97, 0, 1);
+            // Scale alpha according do number of samples
+            int alpha = 100 + Math.min(SAMPLES_FOR_MAX_INTENSITY * 10, (int) samplesCount * 10);
+            int color = MathUtils.interpolateColors(Color.RED, Color.GREEN, alpha, rescaledValue);
+
+            MapsDrawUtilities.drawSquare(mMap, latLngQuadrant, quadrantsDistance, color);
         }
     }
 
@@ -154,5 +149,39 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         this.currentMap.getUiSettings().setZoomGesturesEnabled(true);
         this.setUserLocationEnabled();
         this.setSignalType(SignalType.Wifi);
+    }
+
+    private static class LoadSamplesAsyncTask extends AsyncTask<Void, Void, HashMap<LatLng, SignalMgrsAvgCount>>{
+
+        private SignalType type;
+        private GoogleMap mMap;
+        private SignalRepository signalRepository;
+
+        private LoadSamplesAsyncTask(SignalRepository signalRepository, SignalType type, GoogleMap mMap){
+            this.signalRepository = signalRepository;
+            this.type = type;
+            this.mMap = mMap;
+        }
+
+        private HashMap<LatLng, SignalMgrsAvgCount> getData(SignalType type) {
+            HashMap<LatLng, SignalMgrsAvgCount> mapPoints = new HashMap<>();
+            List<SignalMgrsAvgCount> samplesMgrsAvgCount = signalRepository.getAllSamplesAndCountPerZone(type);
+            for (SignalMgrsAvgCount sample : samplesMgrsAvgCount) {
+                mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample);
+            }
+            return mapPoints;
+        }
+
+        @Override
+        protected HashMap<LatLng, SignalMgrsAvgCount> doInBackground(Void... voids) {
+            return getData(type);
+        }
+
+        @Override
+        protected void onPostExecute(HashMap<LatLng, SignalMgrsAvgCount> mapPoints) {
+            super.onPostExecute(mapPoints);
+            // Render the loaded data
+            renderSamplesOnMap(this.type, this.mMap, mapPoints);
+        }
     }
 }

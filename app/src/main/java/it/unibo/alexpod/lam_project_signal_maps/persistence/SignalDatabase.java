@@ -19,8 +19,8 @@ public abstract class SignalDatabase extends RoomDatabase {
                     //instance = Room.databaseBuilder(context,
                     //        SignalDatabase.class, "signal_database")
                     //        .build();
-                    // TODO: remove this, use real database and query on another thread
-                    instance = Room.inMemoryDatabaseBuilder(context, SignalDatabase.class).allowMainThreadQueries().build();
+                    // TODO: remove this, use real database
+                    instance = Room.inMemoryDatabaseBuilder(context, SignalDatabase.class).build();
                 }
             }
         }
