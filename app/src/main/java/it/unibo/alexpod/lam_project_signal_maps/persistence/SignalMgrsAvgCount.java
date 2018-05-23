@@ -6,4 +6,10 @@ public class SignalMgrsAvgCount {
     public float avgPower;
     public long samplesCount;
 
+    public SignalMgrsAvgCount(String mgrs, float avgPower, long samplesCount){
+        this.mgrs = mgrs;
+        this.avgPower = avgPower;
+        this.samplesCount = samplesCount;
+    }
+
 }

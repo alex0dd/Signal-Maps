@@ -101,7 +101,7 @@ public class GPSLocationService extends Service{
             public void onLocationResult(LocationResult locationResult) {
                 if (locationResult != null) {
                     // Perform Wifi scan
-                    ((WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE)).startScan();
+                    wifiManager.startScan();
                 }
             }
         };
@@ -138,6 +138,7 @@ public class GPSLocationService extends Service{
         createNotificationChannel();
     }
 
+
     private class WifiScanReceiver extends BroadcastReceiver {
 
         public Integer getBestValueOfSignal(List<CellInfo> cInfoList, Class<?> cellClass){
@@ -163,6 +164,7 @@ public class GPSLocationService extends Service{
             return bestValue;
         }
 
+
         public void onReceive(Context c, Intent intent) {
             // Attach callback for last known location
             mFusedLocationClient.getLastLocation().addOnCompleteListener(locationExecutor, new OnCompleteListener<Location>() {
@@ -182,11 +184,12 @@ public class GPSLocationService extends Service{
                         // Get the most recent Wifi scan results
                         List<ScanResult> wifiScanList = wifiManager.getScanResults();
                         if (wifiScanList.size() > 0) {
-                            bestWifiSignalLevel = wifiScanList.get(0).level;
+                            bestWifiSignalLevel = WifiManager.calculateSignalLevel(wifiScanList.get(0).level, 100);
                             for (int i = 1; i < wifiScanList.size(); i++) {
+                                int convertedSignalLevel = WifiManager.calculateSignalLevel(wifiScanList.get(i).level, 100);
                                 // if better signal level
-                                if (wifiScanList.get(i).level > bestWifiSignalLevel) {
-                                    bestWifiSignalLevel = wifiScanList.get(i).level;
+                                if (convertedSignalLevel > bestWifiSignalLevel) {
+                                    bestWifiSignalLevel = convertedSignalLevel;
                                 }
                             }
                         }

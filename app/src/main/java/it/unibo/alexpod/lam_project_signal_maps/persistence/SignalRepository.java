@@ -24,6 +24,10 @@ public class SignalRepository {
         return signalSampleDao.getAllSamplesAndCountPerZone(type.getValue());
     }
 
+    public List<SignalMgrsAvgCount> getAllSamplesAndCountInZone(SignalType type, String mgrs){
+        return signalSampleDao.getAllSamplesAndCountInZone(type.getValue(), mgrs);
+    }
+
     public SignalSample getLastSample(SignalType type){
         return signalSampleDao.getLastSample(type.getValue());
     }

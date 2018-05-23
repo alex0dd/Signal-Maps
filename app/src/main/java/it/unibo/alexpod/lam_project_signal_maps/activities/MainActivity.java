@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Start the gps data gathering service
         startService(new Intent(getApplicationContext(), GPSLocationService.class));
+        // TODO: add navigation header
         // TODO: add a visualization of sampled data in a list or a chart
     }
 

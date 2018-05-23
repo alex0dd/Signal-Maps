@@ -19,6 +19,12 @@ public interface SignalSampleDao {
             "GROUP BY signal_samples.mgrs")
     List<SignalMgrsAvgCount> getAllSamplesAndCountPerZone(int signalType);
 
+    @Query("SELECT signal_samples.mgrs, AVG(signal_samples.signal) as avgPower, COUNT(signal_samples.id) as samplesCount " +
+            "FROM signal_samples " +
+            "WHERE signal_type = :signalType AND signal_samples.mgrs = :mgrs " +
+            "GROUP BY signal_samples.mgrs")
+    List<SignalMgrsAvgCount> getAllSamplesAndCountInZone(int signalType, String mgrs);
+
     @Query("SELECT * FROM signal_samples WHERE signal_type = :signalType ORDER BY datetime DESC LIMIT 1")
     SignalSample getLastSample(int signalType);
 

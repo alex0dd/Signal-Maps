@@ -19,12 +19,15 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
+import it.unibo.alexpod.lam_project_signal_maps.adapters.SignalInfoWindowAdapter;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
@@ -47,6 +50,10 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
 
     private SignalRepository signalRepository;
 
+    private Marker currentPointMarker = null;
+
+    private HashMap<String, SignalMgrsAvgCount> lastFetchedSamples = null;
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,6 +65,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         preferences = getContext().getSharedPreferences(SettingsFragment.PREFERENCES_NAME, Context.MODE_PRIVATE);
         // Get signal repository
         signalRepository = new SignalRepository(getActivity().getApplication());
+        lastFetchedSamples = new HashMap<>();
     }
 
     @Nullable
@@ -98,7 +106,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
     public void setSignalType(final SignalType type) {
         final GoogleMap mMap = this.currentMap;
         if (mMap != null) {
-            LoadSamplesAsyncTask loadSamplesAsyncTask = new LoadSamplesAsyncTask(signalRepository, type, mMap);
+            LoadSamplesAsyncTask loadSamplesAsyncTask = new LoadSamplesAsyncTask(signalRepository, type, mMap, lastFetchedSamples);
             loadSamplesAsyncTask.execute();
 
         }
@@ -116,7 +124,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
             float rescaledValue = sampledValue;
             // Rescale differently according to signal type
             if (type == SignalType.Wifi)
-                rescaledValue = MathUtils.rescaleInInterval(sampledValue, -100, 0, 0, 1);
+                rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 100, 0, 1);
             else if (type == SignalType.UMTS)
                 rescaledValue = MathUtils.rescaleInInterval(sampledValue, 0, 31, 0, 1);
             else if (type == SignalType.LTE)
@@ -149,6 +157,44 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         this.currentMap.getUiSettings().setZoomGesturesEnabled(true);
         this.setUserLocationEnabled();
         this.setSignalType(SignalType.Wifi);
+        // set custom InfoWindow adapter
+        this.currentMap.setInfoWindowAdapter(new SignalInfoWindowAdapter(this.getActivity()));
+        // Set onclick listener
+        this.currentMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng clickedLatLng) {
+                /*
+                * We have three conditions
+                * if not null then remove and add new
+                * if not null but same zone then keep old
+                * if null then add
+                */
+                // if current marker is present and the click's coordinates are in different quadrant
+                if(currentPointMarker != null &&
+                        !CoordinateConverter.LatLngToMgrsQuadrant(currentPointMarker.getPosition()).equals(CoordinateConverter.LatLngToMgrsQuadrant(clickedLatLng))) {
+                    // remove the marker
+                    currentPointMarker.remove();
+                    // reset the marker
+                    currentPointMarker = null;
+                }
+                // if no marker is set
+                if(currentPointMarker == null) {
+                    String currentMgrs = CoordinateConverter.LatLngToMgrsQuadrant(clickedLatLng);
+                    // if there is an entry for that zone
+                    if(lastFetchedSamples != null && lastFetchedSamples.containsKey(currentMgrs)) {
+                        SignalMgrsAvgCount signalMgrsAvgCountEntry = lastFetchedSamples.get(currentMgrs);
+                        Marker zoneMarker = currentMap.addMarker(new MarkerOptions()
+                                .position(clickedLatLng)
+                                .alpha(0.0f)
+                                .infoWindowAnchor(.5f, 1.0f));
+                        zoneMarker.setTag(signalMgrsAvgCountEntry);
+                        zoneMarker.showInfoWindow();
+
+                        currentPointMarker = zoneMarker;
+                    }
+                }
+            }
+        });
     }
 
     private static class LoadSamplesAsyncTask extends AsyncTask<Void, Void, HashMap<LatLng, SignalMgrsAvgCount>>{
@@ -156,18 +202,24 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         private SignalType type;
         private GoogleMap mMap;
         private SignalRepository signalRepository;
+        // used as a buffer for the upper class which won't need to query once this dict is filled
+        private HashMap<String, SignalMgrsAvgCount> lastFetchedData;
 
-        private LoadSamplesAsyncTask(SignalRepository signalRepository, SignalType type, GoogleMap mMap){
+        private LoadSamplesAsyncTask(SignalRepository signalRepository, SignalType type, GoogleMap mMap, HashMap<String, SignalMgrsAvgCount> lastFetchedDataBuffer){
             this.signalRepository = signalRepository;
             this.type = type;
             this.mMap = mMap;
+            this.lastFetchedData = lastFetchedDataBuffer;
         }
 
         private HashMap<LatLng, SignalMgrsAvgCount> getData(SignalType type) {
             HashMap<LatLng, SignalMgrsAvgCount> mapPoints = new HashMap<>();
             List<SignalMgrsAvgCount> samplesMgrsAvgCount = signalRepository.getAllSamplesAndCountPerZone(type);
+            // TODO: can optimize here and get a reference instead of using another structure
+            this.lastFetchedData.clear();
             for (SignalMgrsAvgCount sample : samplesMgrsAvgCount) {
                 mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample);
+                this.lastFetchedData.put(sample.mgrs, sample);
             }
             return mapPoints;
         }
