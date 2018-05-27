@@ -1,7 +1,10 @@
 package it.unibo.alexpod.lam_project_signal_maps.fragments;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.AsyncTask;
@@ -27,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import it.unibo.alexpod.lam_project_signal_maps.R;
+import it.unibo.alexpod.lam_project_signal_maps.activities.SamplesListActivity;
 import it.unibo.alexpod.lam_project_signal_maps.adapters.SignalInfoWindowAdapter;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
@@ -137,6 +141,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         }
     }
 
+    @SuppressLint("MissingPermission")
     public void setUserLocationEnabled(){
         // if a map instance and permissions instance is available
         if(this.currentMap != null && this.permissionsRequester != null) {
@@ -159,7 +164,19 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         this.setSignalType(SignalType.Wifi);
         // set custom InfoWindow adapter
         this.currentMap.setInfoWindowAdapter(new SignalInfoWindowAdapter(this.getActivity()));
-        // Set onclick listener
+        // Set all listeners
+        this.currentMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng clickedLatLng) {
+                if(currentPointMarker != null &&
+                        !CoordinateConverter.LatLngToMgrsQuadrant(currentPointMarker.getPosition()).equals(CoordinateConverter.LatLngToMgrsQuadrant(clickedLatLng))) {
+                    // remove the marker
+                    currentPointMarker.remove();
+                    // reset the marker
+                    currentPointMarker = null;
+                }
+            }
+        });
         this.currentMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng clickedLatLng) {
@@ -189,9 +206,24 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
                                 .infoWindowAnchor(.5f, 1.0f));
                         zoneMarker.setTag(signalMgrsAvgCountEntry);
                         zoneMarker.showInfoWindow();
-
                         currentPointMarker = zoneMarker;
                     }
+                }
+            }
+        });
+        // Info Window is pressed
+        this.currentMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            @Override
+            public void onInfoWindowClick(Marker marker) {
+                SignalMgrsAvgCount signalMgrsAvgCount = (SignalMgrsAvgCount)marker.getTag();
+                // If there is any corresponding entry in the database
+                if(signalMgrsAvgCount != null){
+                    Intent samplesListIntent = new Intent();
+                    samplesListIntent.setComponent(new ComponentName(getActivity().getApplicationContext(), SamplesListActivity.class));
+                    samplesListIntent.putExtra("signalType", signalMgrsAvgCount.signalType);
+                    samplesListIntent.putExtra("zoneMgrs", signalMgrsAvgCount.mgrs);
+                    // Start the list visualization activity
+                    startActivity(samplesListIntent);
                 }
             }
         });
@@ -215,7 +247,6 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         private HashMap<LatLng, SignalMgrsAvgCount> getData(SignalType type) {
             HashMap<LatLng, SignalMgrsAvgCount> mapPoints = new HashMap<>();
             List<SignalMgrsAvgCount> samplesMgrsAvgCount = signalRepository.getAllSamplesAndCountPerZone(type);
-            // TODO: can optimize here and get a reference instead of using another structure
             this.lastFetchedData.clear();
             for (SignalMgrsAvgCount sample : samplesMgrsAvgCount) {
                 mapPoints.put(CoordinateConverter.MgrsToLatLng(sample.mgrs), sample);

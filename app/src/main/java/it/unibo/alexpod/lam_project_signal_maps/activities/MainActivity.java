@@ -69,21 +69,24 @@ public class MainActivity extends AppCompatActivity {
         // Start the gps data gathering service
         startService(new Intent(getApplicationContext(), GPSLocationService.class));
         // TODO: add navigation header
-        // TODO: add a visualization of sampled data in a list or a chart
     }
 
     private void initializeNavigationView() {
         navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                Fragment fragment = null;
-                // Hide everything auxiliary to the next by default
-                mainToolbarSignalTypeSpinner.setVisibility(View.INVISIBLE);
-                // Select which fragment was chosen
+                // Select which option was chosen
                 if(item.getItemId() == R.id.nav_map){
-                    fragment = new MapsFragment();
+                    Fragment fragment = new MapsFragment();
                     mapsFragment = (MapsFragment) fragment;
-                    mainToolbarSignalTypeSpinner.setVisibility(View.VISIBLE);
+                    getSupportFragmentManager().beginTransaction()
+                            .replace(R.id.fragment_container, fragment)
+                            .commit();
+                }
+                else if(item.getItemId() == R.id.nav_samples_list){
+                    Intent samplesListIntent = new Intent();
+                    samplesListIntent.setComponent(new ComponentName(getApplicationContext(), SamplesListActivity.class));
+                    startActivity(samplesListIntent);
                 }
                 else if(item.getItemId() == R.id.nav_settings){
                     Intent settingsIntent = new Intent();
@@ -94,14 +97,6 @@ public class MainActivity extends AppCompatActivity {
                 item.setChecked(true);
                 // Close drawer when item is tapped
                 drawerLayout.closeDrawers();
-
-                // If no unknown fragments were selected
-                if(fragment != null) {
-                    // Swap UI fragments
-                    getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.fragment_container, fragment)
-                            .commit();
-                }
                 return true;
             }
         });
@@ -126,9 +121,9 @@ public class MainActivity extends AppCompatActivity {
         );
 
         /* Add strings to the adaptor */
-        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.wifi_map_tab_title));
-        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.umts_map_tab_title));
-        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.lte_map_tab_title));
+        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.wifi_title));
+        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.umts_title));
+        mainToolbarSignalTypeSpinnerMenuAdapter.add(getString(R.string.lte_title));
         mainToolbarSignalTypeSpinnerMenuAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mainToolbarSignalTypeSpinner.setAdapter(mainToolbarSignalTypeSpinnerMenuAdapter);
 
@@ -172,16 +167,6 @@ public class MainActivity extends AppCompatActivity {
                 return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
     }
 
     @Override

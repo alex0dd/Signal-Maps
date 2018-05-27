@@ -16,15 +16,23 @@ public class SignalRepository {
         signalSampleDao = dbInstance.getSignalSampleDao();
     }
 
-    public List<SignalSample> getSamplesOfType(SignalType type){
+    public List<SignalSample> getAllSamples(){
+        return signalSampleDao.getAllSamples();
+    }
+
+    public List<SignalSample> getAllSamplesOfType(SignalType type){
         return signalSampleDao.getAllSamples(type.getValue());
+    }
+
+    public List<SignalSample> getAllSamplesInZone( String mgrs, SignalType type){
+        return signalSampleDao.getAllSamplesInZone(type.getValue(), mgrs);
     }
 
     public List<SignalMgrsAvgCount> getAllSamplesAndCountPerZone(SignalType type){
         return signalSampleDao.getAllSamplesAndCountPerZone(type.getValue());
     }
 
-    public List<SignalMgrsAvgCount> getAllSamplesAndCountInZone(SignalType type, String mgrs){
+    public List<SignalMgrsAvgCount> getAllSamplesAndCountInZone(String mgrs, SignalType type){
         return signalSampleDao.getAllSamplesAndCountInZone(type.getValue(), mgrs);
     }
 

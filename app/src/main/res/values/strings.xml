@@ -5,15 +5,19 @@
     <!-- Notifications -->
     <string name="channel_name">Signal Maps</string>
     <string name="channel_description">Signal Maps project application notifications channel</string>
-    <!-- Spinners -->
-    <string name="wifi_map_tab_title">Wifi</string>
-    <string name="umts_map_tab_title">UMTS</string>
-    <string name="lte_map_tab_title">LTE</string>
+    <!-- Signal Types -->
+    <string name="wifi_title">Wifi</string>
+    <string name="umts_title">UMTS</string>
+    <string name="lte_title">LTE</string>
+    <string name="unknown_title">Unknown</string>
+    <!-- Activity titles -->
     <string name="title_activity_main">MainActivity</string>
     <string name="action_settings">Settings</string>
+    <string name="title_activity_samples_list">Stored Samples</string>
     <string name="title_activity_maps">Map</string>
     <!-- Navigation strings -->
     <string name="nav_map">Map</string>
+    <string name="nav_samples_list">Stored Samples</string>
     <string name="nav_settings">Settings</string>
     <!-- Preferences strings -->
     <string name="location_preferences_title">Location</string>
@@ -33,4 +37,14 @@
     <string name="sample_interval_preference_1_hour">1 hour</string>
     <string name="sample_interval_preference_1_day">1 day</string>
     <string name="title_activity_settings">Settings</string>
+    <!-- Show Samples Map InfoWindow -->
+    <string name="samples_number_samples_infowindow_text">Samples &lt;b>%1$d&lt;/b></string>
+    <string name="average_power_samples_infowindow_text">Avg. Power &lt;b>%1$.2f&lt;/b></string>
+    <string name="view_samples_infowindow_text">View all samples</string>
+    <!-- Signal sample list entries -->
+    <string name="zone_sample_list_entry_text">Zone &lt;b>%1$s&lt;/b></string>
+    <string name="power_sample_list_entry_text">Power &lt;b>%1$.2f&lt;/b></string>
+    <string name="type_sample_list_entry_text">Type &lt;b>%1$s&lt;/b></string>
+    <string name="datetime_sample_list_entry_text">Datetime &lt;b>%1$s&lt;/b></string>
+    <string name="no_samples_list_entry_text">No stored samples found</string>
 </resources>

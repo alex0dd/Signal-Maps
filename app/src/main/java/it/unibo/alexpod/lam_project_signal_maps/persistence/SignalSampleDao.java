@@ -10,16 +10,22 @@ import java.util.List;
 @Dao
 public interface SignalSampleDao {
 
-    @Query("SELECT * FROM signal_samples WHERE signal_type = :signalType")
+    @Query("SELECT * FROM signal_samples ORDER BY datetime DESC")
+    List<SignalSample> getAllSamples();
+
+    @Query("SELECT * FROM signal_samples WHERE signal_type = :signalType ORDER BY datetime DESC")
     List<SignalSample> getAllSamples(int signalType);
 
-    @Query("SELECT signal_samples.mgrs, AVG(signal_samples.signal) as avgPower, COUNT(signal_samples.id) as samplesCount " +
+    @Query("SELECT * FROM signal_samples WHERE signal_type = :signalType AND mgrs = :mgrs ORDER BY datetime DESC")
+    List<SignalSample> getAllSamplesInZone(int signalType, String mgrs);
+
+    @Query("SELECT signal_samples.mgrs, AVG(signal_samples.signal) as avgPower, COUNT(signal_samples.id) as samplesCount, signal_type " +
             "FROM signal_samples " +
             "WHERE signal_type = :signalType " +
             "GROUP BY signal_samples.mgrs")
     List<SignalMgrsAvgCount> getAllSamplesAndCountPerZone(int signalType);
 
-    @Query("SELECT signal_samples.mgrs, AVG(signal_samples.signal) as avgPower, COUNT(signal_samples.id) as samplesCount " +
+    @Query("SELECT signal_samples.mgrs, AVG(signal_samples.signal) as avgPower, COUNT(signal_samples.id) as samplesCount, signal_type " +
             "FROM signal_samples " +
             "WHERE signal_type = :signalType AND signal_samples.mgrs = :mgrs " +
             "GROUP BY signal_samples.mgrs")

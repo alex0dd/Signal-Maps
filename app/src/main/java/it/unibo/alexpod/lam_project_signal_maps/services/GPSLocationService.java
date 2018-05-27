@@ -230,7 +230,6 @@ public class GPSLocationService extends Service{
         if (lastScanTime - lastSavedLTEDatetime >= sampleInterval.getIntervalMs())
             shouldSaveLTE = true;
 
-        // TODO: (maybe) optimize query to update the existing zone rather than pushing new data
         LinkedList<SignalSample> samplesToInsert = new LinkedList<>();
         if (bestWifiSignalLevel != null && shouldSaveWifi)
             samplesToInsert.add(new SignalSample(locationQuadrant, lastScanTime, bestWifiSignalLevel, SignalType.Wifi));

@@ -3,7 +3,8 @@ package it.unibo.alexpod.lam_project_signal_maps.enums;
 public enum SignalType {
     Wifi(0),
     UMTS(1),
-    LTE(2);
+    LTE(2),
+    ANY(99);
 
     private int value;
 

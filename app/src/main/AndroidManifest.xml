@@ -24,17 +24,23 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".activities.SamplesListActivity"
+            android:label="@string/title_activity_samples_list"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".activities.MainActivity" />
+        <activity
             android:name=".activities.SettingsActivity"
             android:label="@string/title_activity_settings"
+            android:screenOrientation="portrait"
             android:parentActivityName=".activities.MainActivity" />
 
         <service
             android:name=".services.GPSLocationService"
+            android:enabled="true"
+            android:exported="false"
             android:icon="@drawable/ic_launcher_foreground"
             android:label="GPSLocationService"
-            android:exported="false"
-            android:stopWithTask="false"
-            android:enabled="true"/>
+            android:stopWithTask="false" />
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
              (See the file "res/values/google_maps_api.xml").
