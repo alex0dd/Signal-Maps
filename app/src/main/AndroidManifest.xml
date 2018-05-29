@@ -35,7 +35,7 @@
             android:parentActivityName=".activities.MainActivity" />
 
         <service
-            android:name=".services.GPSLocationService"
+            android:name=".services.LocationService"
             android:enabled="true"
             android:exported="false"
             android:icon="@drawable/ic_launcher_foreground"

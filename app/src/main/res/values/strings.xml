@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">LAM_Project_Signal_Maps</string>
+    <string name="app_name">Signal Maps</string>
     <!-- Menu Icons -->
     <string name="action_refresh">Refresh</string>
     <!-- Notifications -->

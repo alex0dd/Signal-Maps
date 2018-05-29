@@ -16,11 +16,10 @@ public abstract class SignalDatabase extends RoomDatabase {
         if (instance == null) {
             synchronized (SignalDatabase.class) {
                 if (instance == null) {
-                    //instance = Room.databaseBuilder(context,
-                    //        SignalDatabase.class, "signal_database")
-                    //        .build();
-                    // TODO: remove this, use real database
-                    instance = Room.inMemoryDatabaseBuilder(context, SignalDatabase.class).build();
+                    // Use secondary memory database
+                    instance = Room.databaseBuilder(context, SignalDatabase.class, "signal_database").build();
+                    // Uncomment this for testing purposes only
+                    // instance = Room.inMemoryDatabaseBuilder(context, SignalDatabase.class).build();
                 }
             }
         }

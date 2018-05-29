@@ -26,7 +26,7 @@ import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
-import it.unibo.alexpod.lam_project_signal_maps.services.GPSLocationService;
+import it.unibo.alexpod.lam_project_signal_maps.services.LocationService;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -67,11 +67,11 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
 
         // Start the gps data gathering service
-        startService(new Intent(getApplicationContext(), GPSLocationService.class));
-        // TODO: add navigation header
+        startService(new Intent(getApplicationContext(), LocationService.class));
     }
 
     private void initializeNavigationView() {
+        navigationView.setCheckedItem(R.id.nav_map);
         navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {

@@ -1,6 +1,7 @@
 package it.unibo.alexpod.lam_project_signal_maps.services;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
@@ -48,7 +49,7 @@ import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalRepository;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
 
-public class GPSLocationService extends Service{
+public class LocationService extends Service{
 
     private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 1; // 1 meter
     private static final long MIN_TIME_BW_UPDATES = 1000 * 1; // 1 second
@@ -74,6 +75,7 @@ public class GPSLocationService extends Service{
     };
 
 
+    @SuppressLint("MissingPermission")
     @Override
     public void onCreate() {
         super.onCreate();
@@ -165,6 +167,7 @@ public class GPSLocationService extends Service{
         }
 
 
+        @SuppressLint("MissingPermission")
         public void onReceive(Context c, Intent intent) {
             // Attach callback for last known location
             mFusedLocationClient.getLastLocation().addOnCompleteListener(locationExecutor, new OnCompleteListener<Location>() {
