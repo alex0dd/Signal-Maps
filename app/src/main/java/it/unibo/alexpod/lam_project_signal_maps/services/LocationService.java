@@ -45,7 +45,7 @@ import it.unibo.alexpod.lam_project_signal_maps.enums.SampleIntervalPreference;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.SettingsFragment;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
-import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
+import it.unibo.alexpod.lam_project_signal_maps.utils.PermissionsRequester;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalRepository;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalSample;
 

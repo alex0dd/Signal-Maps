@@ -25,7 +25,7 @@ import java.util.Arrays;
 import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.fragments.MapsFragment;
-import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
+import it.unibo.alexpod.lam_project_signal_maps.utils.PermissionsRequester;
 import it.unibo.alexpod.lam_project_signal_maps.services.LocationService;
 
 public class MainActivity extends AppCompatActivity {

@@ -1,4 +1,4 @@
-package it.unibo.alexpod.lam_project_signal_maps.permissions;
+package it.unibo.alexpod.lam_project_signal_maps.utils;
 
 import android.Manifest;
 import android.app.Activity;

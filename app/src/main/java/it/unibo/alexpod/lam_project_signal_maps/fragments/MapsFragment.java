@@ -22,6 +22,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
@@ -34,7 +35,7 @@ import it.unibo.alexpod.lam_project_signal_maps.activities.SamplesListActivity;
 import it.unibo.alexpod.lam_project_signal_maps.adapters.SignalInfoWindowAdapter;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
 import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
-import it.unibo.alexpod.lam_project_signal_maps.permissions.PermissionsRequester;
+import it.unibo.alexpod.lam_project_signal_maps.utils.PermissionsRequester;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalMgrsAvgCount;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalRepository;
 import it.unibo.alexpod.lam_project_signal_maps.utils.MapsDrawUtilities;
@@ -160,8 +161,7 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
         this.currentMap = googleMap;
         this.currentMap.getUiSettings().setZoomControlsEnabled(true);
         this.currentMap.getUiSettings().setZoomGesturesEnabled(true);
-        this.setUserLocationEnabled();
-        this.setSignalType(SignalType.Wifi);
+        this.currentMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(this.getContext(), R.raw.maps_style));
         // set custom InfoWindow adapter
         this.currentMap.setInfoWindowAdapter(new SignalInfoWindowAdapter(this.getActivity()));
         // Set all listeners
@@ -227,6 +227,8 @@ public class MapsFragment extends Fragment implements OnMapReadyCallback, Activi
                 }
             }
         });
+        this.setUserLocationEnabled();
+        this.setSignalType(SignalType.Wifi);
     }
 
     private static class LoadSamplesAsyncTask extends AsyncTask<Void, Void, HashMap<LatLng, SignalMgrsAvgCount>>{
