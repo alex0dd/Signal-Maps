@@ -34,7 +34,7 @@ import it.unibo.alexpod.lam_project_signal_maps.R;
 import it.unibo.alexpod.lam_project_signal_maps.activities.SamplesListActivity;
 import it.unibo.alexpod.lam_project_signal_maps.adapters.SignalInfoWindowAdapter;
 import it.unibo.alexpod.lam_project_signal_maps.enums.SignalType;
-import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
+import it.unibo.alexpod.lam_project_signal_maps.utils.CoordinateConverter;
 import it.unibo.alexpod.lam_project_signal_maps.utils.PermissionsRequester;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalMgrsAvgCount;
 import it.unibo.alexpod.lam_project_signal_maps.persistence.SignalRepository;

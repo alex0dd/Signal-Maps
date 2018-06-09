@@ -4,7 +4,7 @@ import com.google.android.gms.maps.model.LatLng;
 
 import org.junit.Test;
 
-import it.unibo.alexpod.lam_project_signal_maps.maps.CoordinateConverter;
+import it.unibo.alexpod.lam_project_signal_maps.utils.CoordinateConverter;
 
 import static org.junit.Assert.*;
 
